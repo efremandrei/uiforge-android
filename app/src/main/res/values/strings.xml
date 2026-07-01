@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">UI Forge</string>
-    <string name="toolbar_subtitle">Frontend-only mobile screen builder</string>
+    <string name="toolbar_subtitle"></string>
     <string name="hero_title">Shape app screens directly on Android</string>
     <string name="hero_subtitle">Build a concept quickly with reusable blocks, live preview, editable layers, and a portable JSON spec. No backend involved.</string>
     <string name="project_name">Project name</string>
-    <string name="save_project">Save Project</string>
-    <string name="load_project">Load Project</string>
-    <string name="export_json">Export JSON</string>
+    <string name="save_project">Save</string>
+    <string name="load_project">Load</string>
+    <string name="export_json">Export</string>
+    <string name="help_icon">?</string>
     <string name="palette_title">Palette</string>
     <string name="palette_subtitle">Long-press a block, drag it onto the phone, and drop it where the screen should place it.</string>
     <string name="add_header">Header</string>
@@ -31,6 +32,9 @@
     <string name="accent_color">Accent color</string>
     <string name="full_width">Stretch to full width</string>
     <string name="emphasized_style">Use emphasized style</string>
+    <string name="width">Width</string>
+    <string name="height">Height</string>
+    <string name="text_size">Text size</string>
     <string name="padding">Padding</string>
     <string name="corner_radius">Corner radius</string>
     <string name="alignment">Alignment</string>
@@ -61,6 +65,15 @@
     <string name="drag_here">Drag components here</string>
     <string name="drag_palette_toast">Long-press a palette block and drop it on the phone preview.</string>
     <string name="dp_value">%1$ddp</string>
+    <string name="percent_value">%1$d%%</string>
+    <string name="sp_value">%1$dsp</string>
+    <string name="auto_value">Auto</string>
     <string name="drag_short">Drag in preview</string>
     <string name="delete_short">Delete</string>
+    <string name="help_overview">Drag blocks from the palette into the phone preview. Save and load projects locally, or export the design as JSON.</string>
+    <string name="help_palette">Long-press a component type and drop it on the phone preview.</string>
+    <string name="help_templates">Starter flows replace the current canvas with a ready-made set of components.</string>
+    <string name="help_preview">Tap a component to edit it. Long-press a component and drag it to reorder the screen.</string>
+    <string name="help_layers">Tap a layer to select it. Delete removes the selected layer.</string>
+    <string name="help_inspector">Edit selected layer content, colors, width, height, text size, padding, corners, alignment, and style.</string>
 </resources>

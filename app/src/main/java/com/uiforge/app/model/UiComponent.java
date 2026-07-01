@@ -13,6 +13,9 @@ public class UiComponent implements Serializable {
     private int paddingDp;
     private int cornerRadiusDp;
     private String alignment;
+    private int widthPercent = 100;
+    private int heightDp = 0;
+    private int textSizeSp = 16;
 
     public UiComponent(UiComponentType type, String title, String helper, String backgroundColorName,
                        String accentColorName, boolean fullWidth, boolean emphasized, int paddingDp,
@@ -27,23 +30,64 @@ public class UiComponent implements Serializable {
         this.paddingDp = paddingDp;
         this.cornerRadiusDp = cornerRadiusDp;
         this.alignment = alignment;
+        applyTypeDefaults(type);
+    }
+
+    private void applyTypeDefaults(UiComponentType type) {
+        switch (type) {
+            case HEADER:
+                textSizeSp = 26;
+                break;
+            case TEXT:
+                textSizeSp = 17;
+                break;
+            case BUTTON:
+                heightDp = 54;
+                textSizeSp = 15;
+                break;
+            case CARD:
+                textSizeSp = 18;
+                break;
+            case IMAGE:
+                heightDp = 150;
+                break;
+            case INPUT:
+            default:
+                textSizeSp = 16;
+                break;
+        }
     }
 
     public static UiComponent createDefault(UiComponentType type) {
         switch (type) {
             case HEADER:
-                return new UiComponent(type, "Hero headline", "A short explanation for the screen", "Sand", "Cobalt", true, true, 20, 24, "start");
+                UiComponent header = new UiComponent(type, "Hero headline", "A short explanation for the screen", "Sand", "Cobalt", true, true, 20, 24, "start");
+                header.setTextSizeSp(26);
+                return header;
             case TEXT:
-                return new UiComponent(type, "Body copy", "Explain the value in one focused sentence", "Ice", "Ink", true, false, 16, 18, "start");
+                UiComponent text = new UiComponent(type, "Body copy", "Explain the value in one focused sentence", "Ice", "Ink", true, false, 16, 18, "start");
+                text.setTextSizeSp(17);
+                return text;
             case BUTTON:
-                return new UiComponent(type, "Continue", "", "Cobalt", "Sand", true, true, 18, 20, "center");
+                UiComponent button = new UiComponent(type, "Continue", "", "Cobalt", "Sand", true, true, 18, 20, "center");
+                button.setHeightDp(54);
+                button.setTextSizeSp(15);
+                return button;
             case INPUT:
-                return new UiComponent(type, "Email address", "you@example.com", "White", "Mint", true, false, 14, 18, "start");
+                UiComponent input = new UiComponent(type, "Email address", "you@example.com", "White", "Mint", true, false, 14, 18, "start");
+                input.setHeightDp(0);
+                input.setTextSizeSp(16);
+                return input;
             case CARD:
-                return new UiComponent(type, "Feature card", "Highlight one benefit or next step", "White", "Sunset", true, false, 18, 24, "start");
+                UiComponent card = new UiComponent(type, "Feature card", "Highlight one benefit or next step", "White", "Sunset", true, false, 18, 24, "start");
+                card.setTextSizeSp(18);
+                return card;
             case IMAGE:
             default:
-                return new UiComponent(type, "Image placeholder", "16:9 visual area", "Charcoal", "Gold", true, false, 18, 28, "center");
+                UiComponent image = new UiComponent(type, "Image placeholder", "16:9 visual area", "Charcoal", "Gold", true, false, 18, 28, "center");
+                image.setHeightDp(150);
+                image.setTextSizeSp(16);
+                return image;
         }
     }
 
@@ -121,6 +165,30 @@ public class UiComponent implements Serializable {
 
     public void setAlignment(String alignment) {
         this.alignment = alignment;
+    }
+
+    public int getWidthPercent() {
+        return widthPercent;
+    }
+
+    public void setWidthPercent(int widthPercent) {
+        this.widthPercent = Math.max(30, Math.min(100, widthPercent));
+    }
+
+    public int getHeightDp() {
+        return heightDp;
+    }
+
+    public void setHeightDp(int heightDp) {
+        this.heightDp = Math.max(0, heightDp);
+    }
+
+    public int getTextSizeSp() {
+        return textSizeSp;
+    }
+
+    public void setTextSizeSp(int textSizeSp) {
+        this.textSizeSp = Math.max(10, Math.min(32, textSizeSp));
     }
 
     public String getSummary() {

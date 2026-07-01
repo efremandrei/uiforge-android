@@ -17,6 +17,7 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -73,10 +74,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        getWindow().setStatusBarColor(Color.BLACK);
 
         seedPalette();
         setupToolbar();
         setupLists();
+        setupHelpButtons();
         setupPaletteButtons();
         setupTemplateButtons();
         setupInspector();
@@ -107,10 +110,19 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private void setupToolbar() {
         binding.toolbar.setTitle(getString(R.string.app_name));
-        binding.toolbar.setSubtitle(getString(R.string.toolbar_subtitle));
+        binding.toolbar.setSubtitle(null);
         binding.saveProjectButton.setOnClickListener(v -> showSaveProjectDialog());
         binding.loadProjectButton.setOnClickListener(v -> showLoadProjectDialog());
         binding.exportButton.setOnClickListener(v -> showExportDialog());
+    }
+
+    private void setupHelpButtons() {
+        binding.heroHelpButton.setOnClickListener(v -> showHelpDialog(R.string.app_name, R.string.help_overview));
+        binding.paletteHelpButton.setOnClickListener(v -> showHelpDialog(R.string.palette_title, R.string.help_palette));
+        binding.templatesHelpButton.setOnClickListener(v -> showHelpDialog(R.string.templates_title, R.string.help_templates));
+        binding.previewHelpButton.setOnClickListener(v -> showHelpDialog(R.string.preview_title, R.string.help_preview));
+        binding.layersHelpButton.setOnClickListener(v -> showHelpDialog(R.string.layers_title, R.string.help_layers));
+        binding.inspectorHelpButton.setOnClickListener(v -> showHelpDialog(R.string.inspector_title, R.string.help_inspector));
     }
 
     private void setupLists() {
@@ -174,6 +186,36 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.emphasisSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (!bindingInspector) {
                 updateSelected(component -> component.setEmphasized(isChecked));
+            }
+        });
+        binding.widthSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                int width = progress + 30;
+                binding.widthValueLabel.setText(getString(R.string.percent_value, width));
+                if (fromUser) {
+                    updateSelected(component -> component.setWidthPercent(width));
+                }
+            }
+        });
+        binding.heightSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                int height = progress == 0 ? 0 : progress + 31;
+                binding.heightValueLabel.setText(height == 0 ? getString(R.string.auto_value) : getString(R.string.dp_value, height));
+                if (fromUser) {
+                    updateSelected(component -> component.setHeightDp(height));
+                }
+            }
+        });
+        binding.textSizeSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                int textSize = progress + 10;
+                binding.textSizeValueLabel.setText(getString(R.string.sp_value, textSize));
+                if (fromUser) {
+                    updateSelected(component -> component.setTextSizeSp(textSize));
+                }
             }
         });
         binding.paddingSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
@@ -271,6 +313,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.emphasisSwitch.setEnabled(enabled);
         binding.paddingSeekBar.setEnabled(enabled);
         binding.radiusSeekBar.setEnabled(enabled);
+        binding.widthSeekBar.setEnabled(enabled);
+        binding.heightSeekBar.setEnabled(enabled);
+        binding.textSizeSeekBar.setEnabled(enabled);
         binding.alignStartButton.setEnabled(enabled);
         binding.alignCenterButton.setEnabled(enabled);
         binding.alignEndButton.setEnabled(enabled);
@@ -283,8 +328,14 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             binding.accentColorInput.setText(selected.getAccentColorName(), false);
             binding.fullWidthSwitch.setChecked(selected.isFullWidth());
             binding.emphasisSwitch.setChecked(selected.isEmphasized());
+            binding.widthSeekBar.setProgress(selected.getWidthPercent() - 30);
+            binding.heightSeekBar.setProgress(selected.getHeightDp() == 0 ? 0 : selected.getHeightDp() - 31);
+            binding.textSizeSeekBar.setProgress(selected.getTextSizeSp() - 10);
             binding.paddingSeekBar.setProgress(selected.getPaddingDp() - 8);
             binding.radiusSeekBar.setProgress(selected.getCornerRadiusDp() - 4);
+            binding.widthValueLabel.setText(getString(R.string.percent_value, selected.getWidthPercent()));
+            binding.heightValueLabel.setText(selected.getHeightDp() == 0 ? getString(R.string.auto_value) : getString(R.string.dp_value, selected.getHeightDp()));
+            binding.textSizeValueLabel.setText(getString(R.string.sp_value, selected.getTextSizeSp()));
             binding.paddingValueLabel.setText(getString(R.string.dp_value, selected.getPaddingDp()));
             binding.radiusValueLabel.setText(getString(R.string.dp_value, selected.getCornerRadiusDp()));
             if ("center".equals(selected.getAlignment())) {
@@ -299,6 +350,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             binding.componentHelperInput.setText("");
             binding.backgroundColorInput.setText("", false);
             binding.accentColorInput.setText("", false);
+            binding.widthValueLabel.setText(getString(R.string.percent_value, 0));
+            binding.heightValueLabel.setText(getString(R.string.auto_value));
+            binding.textSizeValueLabel.setText(getString(R.string.sp_value, 0));
             binding.paddingValueLabel.setText(getString(R.string.dp_value, 0));
             binding.radiusValueLabel.setText(getString(R.string.dp_value, 0));
             binding.alignmentToggle.clearChecked();
@@ -325,9 +379,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             });
             preview.setOnLongClickListener(v -> startExistingComponentDrag(v, (Integer) v.getTag()));
 
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    component.isFullWidth() ? LinearLayout.LayoutParams.MATCH_PARENT : LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            int previewWidth = binding.previewCanvas.getWidth() > 0 ? binding.previewCanvas.getWidth() : dp(252);
+            int width = component.isFullWidth()
+                    ? LinearLayout.LayoutParams.MATCH_PARENT
+                    : Math.max(dp(96), Math.round(previewWidth * (component.getWidthPercent() / 100f)));
+            int height = component.getHeightDp() == 0 ? LinearLayout.LayoutParams.WRAP_CONTENT : dp(component.getHeightDp());
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, height);
             params.topMargin = dp(i == 0 && (!dragInProgress || dragTargetIndex != 0) ? 0 : 14);
             params.gravity = resolveGravity(component.getAlignment());
             binding.previewCanvas.addView(preview, params);
@@ -477,12 +534,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         TextView title = new TextView(this);
         title.setText(component.getTitle());
         title.setTextColor(accent);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.isEmphasized() ? 26 : 22);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
         title.setTypeface(Typeface.DEFAULT_BOLD);
         TextView helper = new TextView(this);
         helper.setText(component.getHelper());
         helper.setTextColor(adjustAlpha(accent, 0.72f));
-        helper.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        helper.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.max(10, component.getTextSizeSp() - 10));
         helper.setPadding(0, dp(8), 0, 0);
         layout.addView(title);
         layout.addView(helper);
@@ -494,12 +551,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         TextView title = new TextView(this);
         title.setText(component.getTitle());
         title.setTextColor(accent);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
         title.setTypeface(component.isEmphasized() ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
         TextView helper = new TextView(this);
         helper.setText(component.getHelper());
         helper.setTextColor(adjustAlpha(accent, 0.72f));
-        helper.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        helper.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.max(10, component.getTextSizeSp() - 4));
         helper.setPadding(0, dp(6), 0, 0);
         layout.addView(title);
         layout.addView(helper);
@@ -509,9 +566,11 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private View createButtonPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
         MaterialButton button = new MaterialButton(this);
         button.setText(component.getTitle());
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
         button.setInsetTop(0);
         button.setInsetBottom(0);
         button.setPadding(padding, padding, padding, padding);
+        button.setMinHeight(component.getHeightDp() == 0 ? dp(48) : dp(component.getHeightDp()));
         button.setCornerRadius(component.getCornerRadiusDp() * 2);
         if (component.isEmphasized()) {
             button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(background));
@@ -535,6 +594,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         editText.setText(component.getHelper());
         editText.setFocusable(false);
         editText.setTextColor(accent);
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
         editText.setPadding(padding, padding, padding, padding);
         layout.setHint(component.getTitle());
         layout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
@@ -559,12 +619,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         title.setText(component.getTitle());
         title.setTextColor(accent);
         title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
         title.setPadding(0, dp(10), 0, 0);
         TextView helper = new TextView(this);
         helper.setText(component.getHelper());
         helper.setTextColor(adjustAlpha(accent, 0.72f));
-        helper.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        helper.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.max(10, component.getTextSizeSp() - 5));
         helper.setPadding(0, dp(6), 0, 0);
         layout.addView(eyebrow);
         layout.addView(title);
@@ -586,11 +646,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         title.setText(component.getTitle());
         title.setTextColor(accent);
         title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
         title.setGravity(Gravity.CENTER_HORIZONTAL);
         TextView helper = new TextView(this);
         helper.setText(component.getHelper());
         helper.setTextColor(adjustAlpha(accent, 0.72f));
-        helper.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        helper.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.max(10, component.getTextSizeSp() - 4));
         helper.setGravity(Gravity.CENTER_HORIZONTAL);
         helper.setPadding(0, dp(6), 0, 0);
         layout.addView(title);
@@ -647,9 +708,14 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void showExportDialog() {
         try {
             String payload = buildProjectJson().toString(2);
+            TextView exportText = dialogText(payload);
+            exportText.setTypeface(Typeface.MONOSPACE);
+            exportText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            ScrollView scrollView = new ScrollView(this);
+            scrollView.addView(exportText);
             new MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.export_title)
-                    .setMessage(payload)
+                    .setView(scrollView)
                     .setPositiveButton(R.string.copy_json, (dialog, which) -> copyToClipboard(payload))
                     .setNegativeButton(R.string.close_label, null)
                     .show();
@@ -670,10 +736,15 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
 
+        LinearLayout content = dialogColumn();
+        content.addView(dialogText(getString(R.string.save_project_message)));
+        content.addView(layout, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.save_project_title)
-                .setMessage(R.string.save_project_message)
-                .setView(layout)
+                .setView(content)
                 .setPositiveButton(R.string.save_label, (dialog, which) -> {
                     String requestedName = nonEmpty(textOf(input), "Untitled Flow");
                     saveProjectWithOverwriteCheck(requestedName);
@@ -721,16 +792,67 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             return;
         }
 
-        CharSequence[] labels = new CharSequence[savedProjects.length];
+        LinearLayout content = dialogColumn();
         for (int i = 0; i < savedProjects.length; i++) {
-            labels[i] = displayNameFor(savedProjects[i]);
+            File project = savedProjects[i];
+            MaterialButton button = new MaterialButton(this);
+            button.setText(displayNameFor(project));
+            button.setTextColor(ContextCompat.getColor(this, R.color.text_strong));
+            button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, R.color.surface_selected)));
+            button.setCornerRadius(dp(12));
+            button.setGravity(Gravity.CENTER_VERTICAL);
+            button.setOnClickListener(v -> {
+                loadProjectFile(project);
+                if (v.getRootView() != null) {
+                    // The dialog closes through the button listener below.
+                }
+            });
+            content.addView(button, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
         }
 
-        new MaterialAlertDialogBuilder(this)
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.load_project_title)
-                .setItems(labels, (dialog, which) -> loadProjectFile(savedProjects[which]))
+                .setView(content)
                 .setNegativeButton(R.string.close_label, null)
+                .create();
+        for (int i = 0; i < content.getChildCount(); i++) {
+            View child = content.getChildAt(i);
+            child.setOnClickListener(v -> {
+                int index = content.indexOfChild(v);
+                loadProjectFile(savedProjects[index]);
+                dialog.dismiss();
+            });
+        }
+        dialog.show();
+    }
+
+    private void showHelpDialog(int titleResId, int messageResId) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(titleResId)
+                .setView(dialogText(getString(messageResId)))
+                .setPositiveButton(R.string.close_label, null)
                 .show();
+    }
+
+    private LinearLayout dialogColumn() {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(4);
+        content.setPadding(padding, padding, padding, padding);
+        return content;
+    }
+
+    private TextView dialogText(String text) {
+        TextView textView = new TextView(this);
+        textView.setText(text);
+        textView.setTextColor(ContextCompat.getColor(this, R.color.text_strong));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        textView.setLineSpacing(dp(2), 1.0f);
+        int padding = dp(12);
+        textView.setPadding(padding, padding, padding, padding);
+        return textView;
     }
 
     private void loadProjectFile(File projectFile) {
@@ -764,6 +886,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             item.put("paddingDp", component.getPaddingDp());
             item.put("cornerRadiusDp", component.getCornerRadiusDp());
             item.put("alignment", component.getAlignment());
+            item.put("widthPercent", component.getWidthPercent());
+            item.put("heightDp", component.getHeightDp());
+            item.put("textSizeSp", component.getTextSizeSp());
             items.put(item);
         }
         root.put("components", items);
@@ -788,6 +913,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         item.optInt("paddingDp", 16),
                         item.optInt("cornerRadiusDp", 18),
                         item.optString("alignment", "start"));
+                component.setWidthPercent(item.optInt("widthPercent", 100));
+                component.setHeightDp(item.optInt("heightDp", component.getHeightDp()));
+                component.setTextSizeSp(item.optInt("textSizeSp", component.getTextSizeSp()));
                 components.add(component);
             }
         }
