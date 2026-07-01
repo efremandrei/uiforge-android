@@ -728,6 +728,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         TextInputEditText input = new TextInputEditText(this);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         input.setText(nonEmpty(textOf(binding.projectNameInput), "Untitled Flow"));
+        input.setSelectAllOnFocus(true);
         input.setSelection(input.getText() == null ? 0 : input.getText().length());
 
         TextInputLayout layout = new TextInputLayout(this);
@@ -943,11 +944,29 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private String displayNameFor(File projectFile) {
+        String savedName = readSavedProjectName(projectFile);
+        if (!savedName.isEmpty()) {
+            return savedName;
+        }
         String fileName = projectFile.getName();
         if (fileName.endsWith(PROJECT_EXTENSION)) {
             return fileName.substring(0, fileName.length() - PROJECT_EXTENSION.length()).replace('-', ' ');
         }
         return fileName;
+    }
+
+    private String readSavedProjectName(File projectFile) {
+        try (FileInputStream stream = new FileInputStream(projectFile)) {
+            byte[] bytes = new byte[(int) projectFile.length()];
+            int read = stream.read(bytes);
+            if (read <= 0) {
+                return "";
+            }
+            JSONObject root = new JSONObject(new String(bytes, 0, read, StandardCharsets.UTF_8));
+            return nonEmpty(root.optString("projectName"), "");
+        } catch (IOException | JSONException e) {
+            return "";
+        }
     }
 
     private String slugify(String projectName) {

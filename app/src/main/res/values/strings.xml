@@ -47,7 +47,7 @@
     <string name="save_project_title">Save project locally</string>
     <string name="save_project_message">Choose a name for this design. It will be stored in the app private files on this device.</string>
     <string name="load_project_title">Load saved project</string>
-    <string name="save_name_hint">Saved project name</string>
+    <string name="save_name_hint">Project name</string>
     <string name="no_saved_projects">No saved projects yet</string>
     <string name="project_saved">Project saved locally</string>
     <string name="project_loaded">Project loaded</string>
