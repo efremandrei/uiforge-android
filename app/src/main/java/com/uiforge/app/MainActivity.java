@@ -536,6 +536,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                             logDebug("Touch down ignored because resize handles are active index=" + index);
                             return true;
                         }
+                        if (resizeHandlesVisible) {
+                            clearResizeHandlesFromCanvas();
+                            resizeHandlesVisible = false;
+                        }
                         resizeBodyTouchIgnored = false;
                         downRawX = event.getRawX();
                         downRawY = event.getRawY();
@@ -571,7 +575,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                             if (longPressAction != null) {
                                 touchedView.removeCallbacks(longPressAction);
                             }
-                            resizeHandlesVisible = false;
+                            if (resizeHandlesVisible) {
+                                clearResizeHandlesFromCanvas();
+                                resizeHandlesVisible = false;
+                            }
                             if (component.isFullWidth()) {
                                 component.setWidthDp(defaultFreeWidthDp(component));
                                 component.setFullWidth(false);
@@ -596,7 +603,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                             touchedView.removeCallbacks(longPressAction);
                         }
                         if (!moved && !longPressed) {
-                            resizeHandlesVisible = false;
+                            if (resizeHandlesVisible) {
+                                clearResizeHandlesFromCanvas();
+                                resizeHandlesVisible = false;
+                            }
                             logDebug("Tap selected index=" + index + " type=" + component.getType());
                         } else if (moved) {
                             bindInspector();
@@ -698,11 +708,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                             }
                             nextWidth = MIN_WIDGET_WIDTH_DP;
                         }
-                        if (nextHeight < MIN_WIDGET_HEIGHT_DP) {
+                        int minHeight = minComponentHeightDp(component);
+                        if (nextHeight < minHeight) {
                             if (direction.contains("top")) {
-                                nextY -= MIN_WIDGET_HEIGHT_DP - nextHeight;
+                                nextY -= minHeight - nextHeight;
                             }
-                            nextHeight = MIN_WIDGET_HEIGHT_DP;
+                            nextHeight = minHeight;
                         }
                         component.setFullWidth(false);
                         component.setXdp(nextX);
@@ -776,6 +787,16 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         }
     }
 
+    private void clearResizeHandlesFromCanvas() {
+        for (int i = 0; i < binding.previewCanvas.getChildCount(); i++) {
+            View child = binding.previewCanvas.getChildAt(i);
+            if (child instanceof FrameLayout) {
+                removeResizeHandles((FrameLayout) child);
+            }
+        }
+        logDebug("Resize handles cleared");
+    }
+
     private void addPaletteComponentAt(UiComponentType type, float dropX, float dropY) {
         UiComponent component = UiComponent.createDefault(type);
         component.setFullWidth(false);
@@ -803,7 +824,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             component.setWidthDp(Math.min(component.getWidthDp(), canvasWidthDp()));
         }
         if (component.getHeightDp() > 0) {
-            component.setHeightDp(Math.min(component.getHeightDp(), canvasHeightDp()));
+            component.setHeightDp(clamp(component.getHeightDp(), minComponentHeightDp(component), canvasHeightDp()));
         }
     }
 
@@ -837,7 +858,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private int resolveComponentHeightDp(UiComponent component) {
         if (component.getHeightDp() > 0) {
-            return clamp(component.getHeightDp(), MIN_WIDGET_HEIGHT_DP, canvasHeightDp());
+            return clamp(component.getHeightDp(), minComponentHeightDp(component), canvasHeightDp());
         }
         switch (component.getType()) {
             case HEADER:
@@ -850,6 +871,35 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 return 118;
             default:
                 return 72;
+        }
+    }
+
+    private int minComponentHeightDp(UiComponent component) {
+        switch (component.getType()) {
+            case HEADER:
+                return 72;
+            case TEXT:
+                return 56;
+            case BUTTON:
+                return 48;
+            case INPUT:
+            case DROPDOWN:
+                return 56;
+            case CARD:
+                return 72;
+            case IMAGE:
+                return 80;
+            case TABS:
+                return 44;
+            case CHECKBOX:
+            case SWITCH:
+                return 48;
+            case PROGRESS:
+                return 56;
+            case DIVIDER:
+                return 18;
+            default:
+                return MIN_WIDGET_HEIGHT_DP;
         }
     }
 
