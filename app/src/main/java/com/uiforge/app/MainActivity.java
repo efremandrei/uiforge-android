@@ -721,7 +721,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         return true;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
-                        refreshAll();
+                        logDebug("Resize end index=" + index + " direction=" + direction
+                                + " xDp=" + component.getXdp() + " yDp=" + component.getYdp()
+                                + " widthDp=" + resolveComponentWidthDp(component)
+                                + " heightDp=" + resolveComponentHeightDp(component));
+                        layerAdapter.setSelectedPosition(selectedIndex);
+                        bindInspector();
                         return true;
                     default:
                         return true;
@@ -754,7 +759,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void showResizeHandles(View touchedView, int index) {
         View container = findCanvasContainer(touchedView);
         if (!(container instanceof FrameLayout)) {
-            refreshAll();
+            logDebug("Resize handles skipped; container missing index=" + index);
             return;
         }
         removeResizeHandles((FrameLayout) container);
