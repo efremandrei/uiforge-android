@@ -45,6 +45,27 @@ public class UiComponent implements Serializable {
                 heightDp = 54;
                 textSizeSp = 15;
                 break;
+            case TABS:
+                heightDp = 48;
+                textSizeSp = 14;
+                break;
+            case DROPDOWN:
+                heightDp = 56;
+                textSizeSp = 15;
+                break;
+            case CHECKBOX:
+            case SWITCH:
+                heightDp = 52;
+                textSizeSp = 15;
+                break;
+            case DIVIDER:
+                heightDp = 22;
+                textSizeSp = 12;
+                break;
+            case PROGRESS:
+                heightDp = 70;
+                textSizeSp = 14;
+                break;
             case CARD:
                 textSizeSp = 18;
                 break;
@@ -83,11 +104,23 @@ public class UiComponent implements Serializable {
                 card.setTextSizeSp(18);
                 return card;
             case IMAGE:
-            default:
                 UiComponent image = new UiComponent(type, "Image placeholder", "16:9 visual area", "Charcoal", "Gold", true, false, 18, 28, "center");
                 image.setHeightDp(150);
                 image.setTextSizeSp(16);
                 return image;
+            case TABS:
+                return new UiComponent(type, "Overview, Details, Activity", "Overview", "White", "Cobalt", true, true, 8, 18, "center");
+            case DROPDOWN:
+                return new UiComponent(type, "Country", "Select an option", "White", "Ink", true, false, 14, 18, "start");
+            case CHECKBOX:
+                return new UiComponent(type, "Accept terms", "Checked", "White", "Mint", true, false, 12, 16, "start");
+            case SWITCH:
+                return new UiComponent(type, "Enable notifications", "On", "White", "Cobalt", true, false, 12, 16, "start");
+            case DIVIDER:
+                return new UiComponent(type, "Section divider", "", "White", "Ink", true, false, 8, 8, "center");
+            case PROGRESS:
+            default:
+                return new UiComponent(type, "Setup progress", "65%", "White", "Mint", true, false, 14, 18, "start");
         }
     }
 

@@ -6,7 +6,13 @@ public enum UiComponentType {
     BUTTON("Button"),
     INPUT("Input"),
     CARD("Card"),
-    IMAGE("Image");
+    IMAGE("Image"),
+    TABS("Tabs"),
+    DROPDOWN("Dropdown"),
+    CHECKBOX("Checkbox"),
+    SWITCH("Switch"),
+    DIVIDER("Divider"),
+    PROGRESS("Progress");
 
     private final String label;
 

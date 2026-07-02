@@ -18,8 +18,10 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Space;
 import android.widget.TextView;
@@ -33,6 +35,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.uiforge.app.databinding.ActivityMainBinding;
@@ -155,6 +158,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         configurePaletteButton(binding.addInputButton, UiComponentType.INPUT);
         configurePaletteButton(binding.addCardButton, UiComponentType.CARD);
         configurePaletteButton(binding.addImageButton, UiComponentType.IMAGE);
+        configurePaletteButton(binding.addTabsButton, UiComponentType.TABS);
+        configurePaletteButton(binding.addDropdownButton, UiComponentType.DROPDOWN);
+        configurePaletteButton(binding.addCheckboxButton, UiComponentType.CHECKBOX);
+        configurePaletteButton(binding.addSwitchButton, UiComponentType.SWITCH);
+        configurePaletteButton(binding.addDividerButton, UiComponentType.DIVIDER);
+        configurePaletteButton(binding.addProgressButton, UiComponentType.PROGRESS);
     }
 
     private void configurePaletteButton(MaterialButton button, UiComponentType type) {
@@ -541,8 +550,20 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             case CARD:
                 return createCardPreview(component, background, accent, padding, radius, selected);
             case IMAGE:
-            default:
                 return createImagePreview(component, background, accent, padding, radius, selected);
+            case TABS:
+                return createTabsPreview(component, background, accent, padding, radius, selected);
+            case DROPDOWN:
+                return createDropdownPreview(component, background, accent, padding, radius, selected);
+            case CHECKBOX:
+                return createCheckboxPreview(component, background, accent, padding, radius, selected);
+            case SWITCH:
+                return createSwitchPreview(component, background, accent, padding, radius, selected);
+            case DIVIDER:
+                return createDividerPreview(component, background, accent, padding, radius, selected);
+            case PROGRESS:
+            default:
+                return createProgressPreview(component, background, accent, padding, radius, selected);
         }
     }
 
@@ -673,6 +694,110 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         helper.setPadding(0, dp(6), 0, 0);
         layout.addView(title);
         layout.addView(helper);
+        return layout;
+    }
+
+    private View createTabsPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, padding, selected);
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        String[] rawTabs = component.getTitle().split(",");
+        String activeTab = component.getHelper();
+        for (String rawTab : rawTabs) {
+            String tab = rawTab.trim();
+            if (tab.isEmpty()) {
+                continue;
+            }
+            boolean active = tab.equalsIgnoreCase(activeTab == null ? "" : activeTab.trim());
+            TextView label = new TextView(this);
+            label.setText(tab);
+            label.setGravity(Gravity.CENTER);
+            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
+            label.setTypeface(active || component.isEmphasized() ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+            label.setTextColor(active ? background : accent);
+            GradientDrawable tabBg = new GradientDrawable();
+            tabBg.setCornerRadius(dp(Math.max(8, component.getCornerRadiusDp() - 4)));
+            tabBg.setColor(active ? accent : Color.TRANSPARENT);
+            label.setBackground(tabBg);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            params.setMargins(dp(2), 0, dp(2), 0);
+            layout.addView(label, params);
+        }
+        return layout;
+    }
+
+    private View createDropdownPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, padding, selected);
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        TextView label = new TextView(this);
+        label.setText(nonEmpty(component.getHelper(), component.getTitle()));
+        label.setTextColor(accent);
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
+        TextView arrow = new TextView(this);
+        arrow.setText("v");
+        arrow.setGravity(Gravity.CENTER);
+        arrow.setTextColor(accent);
+        arrow.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
+        layout.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        layout.addView(arrow, new LinearLayout.LayoutParams(dp(28), LinearLayout.LayoutParams.WRAP_CONTENT));
+        return layout;
+    }
+
+    private View createCheckboxPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, padding, selected);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        CheckBox checkBox = new CheckBox(this);
+        checkBox.setText(component.getTitle());
+        checkBox.setTextColor(accent);
+        checkBox.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
+        checkBox.setChecked(isAffirmative(component.getHelper()));
+        checkBox.setEnabled(false);
+        layout.addView(checkBox, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return layout;
+    }
+
+    private View createSwitchPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, padding, selected);
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        TextView label = new TextView(this);
+        label.setText(component.getTitle());
+        label.setTextColor(accent);
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
+        SwitchMaterial switchView = new SwitchMaterial(this);
+        switchView.setChecked(isAffirmative(component.getHelper()));
+        switchView.setEnabled(false);
+        layout.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        layout.addView(switchView, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return layout;
+    }
+
+    private View createDividerPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, padding, selected);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        View line = new View(this);
+        line.setBackgroundColor(accent);
+        layout.addView(line, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(component.isEmphasized() ? 3 : 1)));
+        return layout;
+    }
+
+    private View createProgressPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, padding, selected);
+        TextView label = new TextView(this);
+        label.setText(component.getTitle());
+        label.setTextColor(accent);
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
+        ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progress.setMax(100);
+        progress.setProgress(parsePercent(component.getHelper(), 65));
+        TextView value = new TextView(this);
+        value.setText(component.getHelper());
+        value.setGravity(Gravity.END);
+        value.setTextColor(adjustAlpha(accent, 0.72f));
+        value.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.max(10, component.getTextSizeSp() - 2));
+        layout.addView(label);
+        layout.addView(progress, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(12)));
+        layout.addView(value);
         return layout;
     }
 
@@ -1070,6 +1195,25 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private String nonEmpty(String value, String fallback) {
         return value == null || value.trim().isEmpty() ? fallback : value.trim();
+    }
+
+    private boolean isAffirmative(String value) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.trim().toLowerCase();
+        return normalized.equals("true") || normalized.equals("yes") || normalized.equals("on") || normalized.equals("checked");
+    }
+
+    private int parsePercent(String value, int fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return clamp(Integer.parseInt(value.replace("%", "").trim()), 0, 100);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
     }
 
     private TextWatcher simpleWatcher(TextConsumer consumer) {

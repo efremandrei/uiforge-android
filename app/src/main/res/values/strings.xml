@@ -17,6 +17,12 @@
     <string name="add_input">Input</string>
     <string name="add_card">Card</string>
     <string name="add_image">Image</string>
+    <string name="add_tabs">Tabs</string>
+    <string name="add_dropdown">Dropdown</string>
+    <string name="add_checkbox">Checkbox</string>
+    <string name="add_switch">Switch</string>
+    <string name="add_divider">Divider</string>
+    <string name="add_progress">Progress</string>
     <string name="templates_title">Starter Flows</string>
     <string name="template_commerce">Commerce</string>
     <string name="template_profile">Profile</string>
