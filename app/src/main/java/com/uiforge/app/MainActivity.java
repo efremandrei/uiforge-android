@@ -2,12 +2,16 @@ package com.uiforge.app;
 
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -20,6 +24,8 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.Window;
 import android.view.WindowManager;
+import android.net.Uri;
+import android.provider.MediaStore;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.FrameLayout;
@@ -32,6 +38,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.ColorInt;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.core.content.ContextCompat;
@@ -59,16 +66,25 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements LayerAdapter.LayerActionListener {
     private static final String LOG_TAG = "UIForge";
+    private static final String FILE_LOG_NAME = "uidesignerFailLog.txt";
     private static final String STATE_PROJECT_NAME = "project_name";
     private static final String STATE_COMPONENTS = "components";
     private static final String STATE_SELECTION = "selection";
@@ -82,12 +98,15 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private ActivityMainBinding binding;
     private final List<UiComponent> components = new ArrayList<>();
     private final Map<String, Integer> palette = new LinkedHashMap<>();
+    private final ExecutorService fileLogExecutor = Executors.newSingleThreadExecutor();
+    private final SimpleDateFormat fileLogDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
     private LayerAdapter layerAdapter;
     private boolean bindingInspector;
     private boolean dragInProgress;
     private boolean resizeHandlesVisible;
     private int selectedIndex = -1;
     private int dragTargetIndex = -1;
+    private long lastMoveFileLogAtMs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,6 +136,13 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         wireDropdowns();
         refreshAll();
         logDebug("onCreate ready components=" + components.size() + " selectedIndex=" + selectedIndex);
+    }
+
+    @Override
+    protected void onDestroy() {
+        logDebug("onDestroy finishing=" + isFinishing());
+        fileLogExecutor.shutdown();
+        super.onDestroy();
     }
 
     private void configureSystemBars() {
@@ -1571,10 +1597,98 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private void logDebug(String message) {
         Log.d(LOG_TAG, message);
+        if (shouldWriteDebugToFile(message)) {
+            writeFileLog("D", message, null);
+        }
     }
 
     private void logError(String message, Throwable throwable) {
         Log.e(LOG_TAG, message, throwable);
+        writeFileLog("E", message, throwable);
+    }
+
+    private boolean shouldWriteDebugToFile(String message) {
+        if (message.startsWith("Move ") || message.startsWith("Resize move ")) {
+            long now = System.currentTimeMillis();
+            if (now - lastMoveFileLogAtMs < 500L) {
+                return false;
+            }
+            lastMoveFileLogAtMs = now;
+        }
+        return true;
+    }
+
+    private void writeFileLog(String level, String message, Throwable throwable) {
+        String line = buildFileLogLine(level, message, throwable);
+        fileLogExecutor.execute(() -> {
+            try {
+                appendToDownloadsLog(line);
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "Could not write Downloads/" + FILE_LOG_NAME, e);
+            }
+        });
+    }
+
+    private String buildFileLogLine(String level, String message, Throwable throwable) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(fileLogDateFormat.format(new Date()))
+                .append(' ')
+                .append(level)
+                .append('/')
+                .append(LOG_TAG)
+                .append(": ")
+                .append(message)
+                .append('\n');
+        if (throwable != null) {
+            StringWriter stringWriter = new StringWriter();
+            throwable.printStackTrace(new PrintWriter(stringWriter));
+            builder.append(stringWriter).append('\n');
+        }
+        return builder.toString();
+    }
+
+    private void appendToDownloadsLog(String line) throws IOException {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Uri logUri = findOrCreateDownloadsLogUri();
+            try (OutputStream stream = getContentResolver().openOutputStream(logUri, "wa")) {
+                if (stream == null) {
+                    throw new IOException("Could not open MediaStore output stream");
+                }
+                stream.write(line.getBytes(StandardCharsets.UTF_8));
+            }
+            return;
+        }
+        File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if (!downloads.exists() && !downloads.mkdirs()) {
+            throw new IOException("Could not create Downloads directory");
+        }
+        try (FileOutputStream stream = new FileOutputStream(new File(downloads, FILE_LOG_NAME), true)) {
+            stream.write(line.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private Uri findOrCreateDownloadsLogUri() throws IOException {
+        ContentResolver resolver = getContentResolver();
+        Uri collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
+        String[] projection = new String[]{MediaStore.Downloads._ID};
+        String selection = MediaStore.Downloads.DISPLAY_NAME + "=?";
+        String[] selectionArgs = new String[]{FILE_LOG_NAME};
+        try (Cursor cursor = resolver.query(collection, projection, selection, selectionArgs, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                long id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID));
+                return Uri.withAppendedPath(collection, String.valueOf(id));
+            }
+        }
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Downloads.DISPLAY_NAME, FILE_LOG_NAME);
+        values.put(MediaStore.Downloads.MIME_TYPE, "text/plain");
+        values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+        Uri created = resolver.insert(collection, values);
+        if (created == null) {
+            throw new IOException("Could not create Downloads log file");
+        }
+        return created;
     }
 
     private int adjustAlpha(int color, float factor) {
