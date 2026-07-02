@@ -512,6 +512,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             private int startYdp;
             private boolean moved;
             private boolean longPressed;
+            private boolean resizeBodyTouchIgnored;
             private Runnable longPressAction;
 
             @Override
@@ -522,6 +523,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 UiComponent component = components.get(index);
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
+                        if (resizeHandlesVisible && selectedIndex == index) {
+                            resizeBodyTouchIgnored = true;
+                            logDebug("Touch down ignored because resize handles are active index=" + index);
+                            return true;
+                        }
+                        resizeBodyTouchIgnored = false;
                         downRawX = event.getRawX();
                         downRawY = event.getRawY();
                         startXdp = component.getXdp();
@@ -546,6 +553,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         touchedView.postDelayed(longPressAction, ViewConfiguration.getLongPressTimeout());
                         return true;
                     case MotionEvent.ACTION_MOVE:
+                        if (resizeBodyTouchIgnored) {
+                            return true;
+                        }
                         float dx = event.getRawX() - downRawX;
                         float dy = event.getRawY() - downRawY;
                         if (!longPressed && (moved || Math.hypot(dx, dy) > touchSlop)) {
@@ -570,6 +580,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         return true;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
+                        if (resizeBodyTouchIgnored) {
+                            resizeBodyTouchIgnored = false;
+                            return true;
+                        }
                         if (longPressAction != null) {
                             touchedView.removeCallbacks(longPressAction);
                         }
@@ -596,29 +610,21 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         addResizeHandle(container, index, "bottom", Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         addResizeHandle(container, index, "bottom_left", Gravity.BOTTOM | Gravity.START);
         addResizeHandle(container, index, "left", Gravity.CENTER_VERTICAL | Gravity.START);
+        logDebug("Resize handles shown index=" + index + " containerWidthPx=" + container.getWidth()
+                + " containerHeightPx=" + container.getHeight());
     }
 
     private void addResizeHandle(FrameLayout container, int index, String direction, int gravity) {
         View handle = new View(this);
         handle.setTag("resize_handle");
         handle.setBackgroundResource(R.drawable.bg_resize_handle);
+        handle.setClickable(true);
+        handle.setElevation(dp(8));
         handle.setOnTouchListener(resizeHandleTouchListener(index, direction));
-        int size = dp(16);
+        int size = dp(28);
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(size, size, gravity);
-        int offset = -dp(7);
-        if ((gravity & Gravity.START) == Gravity.START) {
-            params.leftMargin = offset;
-        }
-        if ((gravity & Gravity.TOP) == Gravity.TOP) {
-            params.topMargin = offset;
-        }
-        if ((gravity & Gravity.END) == Gravity.END) {
-            params.rightMargin = offset;
-        }
-        if ((gravity & Gravity.BOTTOM) == Gravity.BOTTOM) {
-            params.bottomMargin = offset;
-        }
         container.addView(handle, params);
+        handle.bringToFront();
     }
 
     private View.OnTouchListener resizeHandleTouchListener(int index, String direction) {
