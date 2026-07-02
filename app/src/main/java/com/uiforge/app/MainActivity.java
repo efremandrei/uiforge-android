@@ -464,7 +464,6 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.previewCanvas.removeAllViews();
         if (components.isEmpty() && !dragInProgress) {
             View empty = createEmptyCanvasState();
-            empty.setOnDragListener(this::handlePreviewCanvasDrag);
             binding.previewCanvas.addView(empty, fullCanvasLayoutParams());
             return;
         }
@@ -481,10 +480,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         container.setTag(Integer.valueOf(index));
         container.setClipChildren(false);
         container.setClipToPadding(false);
-        container.setOnDragListener(this::handlePreviewCanvasDrag);
         View preview = createPreviewView(component, index == selectedIndex);
         preview.setTag(Integer.valueOf(index));
-        preview.setOnDragListener(this::handlePreviewCanvasDrag);
         installCanvasTouch(preview, index);
         installCanvasTouch(container, index);
         container.addView(preview, new FrameLayout.LayoutParams(
@@ -956,21 +953,20 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         switch (event.getAction()) {
             case DragEvent.ACTION_DRAG_STARTED:
                 dragInProgress = payload.isPaletteDrag();
-                if (dragInProgress) {
-                    renderPreview();
-                }
+                logDebug("Palette drag started accepted=" + dragInProgress);
                 return dragInProgress;
             case DragEvent.ACTION_DRAG_LOCATION:
                 return true;
             case DragEvent.ACTION_DROP:
                 if (payload.isPaletteDrag()) {
                     addPaletteComponentAt(payload.type, canvasEventX(view, event), canvasEventY(view, event));
+                    binding.previewCanvas.post(this::refreshAll);
                 }
                 return true;
             case DragEvent.ACTION_DRAG_ENDED:
                 dragInProgress = false;
                 dragTargetIndex = -1;
-                refreshAll();
+                logDebug("Palette drag ended");
                 return true;
             default:
                 return true;
