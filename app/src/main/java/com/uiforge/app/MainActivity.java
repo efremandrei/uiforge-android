@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -26,6 +27,7 @@ import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.net.Uri;
@@ -36,6 +38,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.Space;
 import android.widget.TextView;
@@ -44,6 +47,7 @@ import android.widget.Toast;
 import androidx.annotation.ColorInt;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
@@ -91,6 +95,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private static final String FILE_LOG_NAME = "uidesignerFailLog.txt";
     private static final String FILE_LOG_PREFS = "uiforge_file_log";
     private static final String FILE_LOG_URI_PREF = "downloads_log_uri";
+    private static final String SETTINGS_PREFS = "uiforge_settings";
+    private static final String DARK_SKIN_PREF = "dark_skin";
     private static final int MENU_HELP = 1001;
     private static final int MENU_ABOUT = 1002;
     private static final String STATE_PROJECT_NAME = "project_name";
@@ -109,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private final ExecutorService fileLogExecutor = Executors.newSingleThreadExecutor();
     private final SimpleDateFormat fileLogDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
     private LayerAdapter layerAdapter;
+    private PopupWindow inspectorPopup;
     private boolean bindingInspector;
     private boolean dragInProgress;
     private boolean resizeHandlesVisible;
@@ -123,15 +130,18 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         super.onCreate(savedInstanceState);
         installCrashLogger();
         logDebug("onCreate start savedState=" + (savedInstanceState != null));
+        applySavedSkinMode();
         configureSystemBars();
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         setupSystemBarInsets();
+        setupInspectorDrawerHost();
 
         seedPalette();
         setupToolbar();
         setupLists();
         setupHelpButtons();
+        setupDarkSkinSwitch();
         setupPaletteButtons();
         setupTemplateButtons();
         setupInspector();
@@ -223,6 +233,45 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.exportButton.setOnClickListener(v -> showExportDialog());
     }
 
+    private void setupDarkSkinSwitch() {
+        boolean darkSkin = getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
+                .getBoolean(DARK_SKIN_PREF, false);
+        binding.darkSkinSwitch.setChecked(darkSkin);
+        binding.darkSkinSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(DARK_SKIN_PREF, isChecked)
+                    .apply();
+            logDebug("Dark skin changed enabled=" + isChecked);
+            AppCompatDelegate.setDefaultNightMode(isChecked
+                    ? AppCompatDelegate.MODE_NIGHT_YES
+                    : AppCompatDelegate.MODE_NIGHT_NO);
+        });
+    }
+
+    private void applySavedSkinMode() {
+        boolean darkSkin = getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
+                .getBoolean(DARK_SKIN_PREF, false);
+        AppCompatDelegate.setDefaultNightMode(darkSkin
+                ? AppCompatDelegate.MODE_NIGHT_YES
+                : AppCompatDelegate.MODE_NIGHT_NO);
+    }
+
+    private void setupInspectorDrawerHost() {
+        ViewGroup parent = (ViewGroup) binding.inspectorDrawer.getParent();
+        if (parent != null) {
+            parent.removeView(binding.inspectorDrawer);
+        }
+        inspectorPopup = new PopupWindow(
+                binding.inspectorDrawer,
+                inspectorDrawerWidth(),
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                true);
+        inspectorPopup.setOutsideTouchable(true);
+        inspectorPopup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        inspectorPopup.setElevation(dp(12));
+    }
+
     private void setupHelpButtons() {
         configureHelpButton(binding.heroHelpButton, true);
         configureHelpButton(binding.paletteHelpButton, false);
@@ -280,9 +329,47 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void setupTemplateButtons() {
-        binding.templateCommerceButton.setOnClickListener(v -> applyTemplate(createCommerceTemplate(), "Commerce Checkout"));
-        binding.templateProfileButton.setOnClickListener(v -> applyTemplate(createProfileTemplate(), "Profile Setup"));
-        binding.templateOnboardingButton.setOnClickListener(v -> applyTemplate(createOnboardingTemplate(), "Onboarding Flow"));
+        List<String> presets = Arrays.asList(
+                getString(R.string.template_commerce),
+                getString(R.string.template_profile),
+                getString(R.string.template_onboarding),
+                getString(R.string.template_banking),
+                getString(R.string.template_food_delivery),
+                getString(R.string.template_fitness));
+        binding.presetDropdownInput.setAdapter(new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_list_item_1,
+                presets));
+        binding.presetDropdownInput.setOnItemClickListener((parent, view, position, id) ->
+                applyPreset((String) parent.getItemAtPosition(position)));
+        binding.startNewDesignButton.setOnClickListener(v -> startNewDesign());
+    }
+
+    private void applyPreset(String presetName) {
+        if (getString(R.string.template_profile).equals(presetName)) {
+            applyTemplate(createProfileTemplate(), "Profile Setup");
+        } else if (getString(R.string.template_onboarding).equals(presetName)) {
+            applyTemplate(createOnboardingTemplate(), "Onboarding Flow");
+        } else if (getString(R.string.template_banking).equals(presetName)) {
+            applyTemplate(createBankingTemplate(), "Mobile Banking");
+        } else if (getString(R.string.template_food_delivery).equals(presetName)) {
+            applyTemplate(createFoodDeliveryTemplate(), "Food Delivery");
+        } else if (getString(R.string.template_fitness).equals(presetName)) {
+            applyTemplate(createFitnessTemplate(), "Fitness Tracker");
+        } else {
+            applyTemplate(createCommerceTemplate(), "Commerce Checkout");
+        }
+        binding.presetDropdownInput.setText(presetName, false);
+    }
+
+    private void startNewDesign() {
+        logDebug("Starting blank design");
+        components.clear();
+        binding.projectNameInput.setText("Untitled Flow");
+        binding.presetDropdownInput.setText("", false);
+        selectedIndex = -1;
+        resizeHandlesVisible = false;
+        refreshAll();
     }
 
     private void setupProjectNameWatcher() {
@@ -424,6 +511,36 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         template.add(new UiComponent(UiComponentType.TEXT, "Why it matters", "One clear paragraph is often enough for onboarding", "White", "Ink", true, false, 18, 22, "center"));
         template.add(new UiComponent(UiComponentType.CARD, "Daily habit", "Use cards for checklists, insight blocks, and features", "Ice", "Mint", true, false, 18, 24, "start"));
         template.add(new UiComponent(UiComponentType.BUTTON, "Start first session", "", "Sunset", "White", true, true, 18, 22, "center"));
+        return template;
+    }
+
+    private List<UiComponent> createBankingTemplate() {
+        List<UiComponent> template = new ArrayList<>();
+        template.add(new UiComponent(UiComponentType.HEADER, "Good morning, Andrei", "Checking balance and quick actions", "Cobalt", "White", true, true, 22, 28, "start"));
+        template.add(new UiComponent(UiComponentType.CARD, "$12,480.42", "Available balance", "White", "Mint", true, true, 18, 24, "start"));
+        template.add(new UiComponent(UiComponentType.TABS, "Accounts, Cards, Activity", "Accounts", "Ice", "Cobalt", true, true, 8, 18, "center"));
+        template.add(new UiComponent(UiComponentType.BUTTON, "Transfer money", "", "Mint", "White", false, true, 16, 20, "center"));
+        template.add(new UiComponent(UiComponentType.CARD, "Recent payment", "Coffee House - $8.20", "White", "Ink", true, false, 14, 18, "start"));
+        return template;
+    }
+
+    private List<UiComponent> createFoodDeliveryTemplate() {
+        List<UiComponent> template = new ArrayList<>();
+        template.add(new UiComponent(UiComponentType.HEADER, "Dinner near you", "Fast delivery from top rated kitchens", "Sunset", "White", true, true, 22, 28, "start"));
+        template.add(new UiComponent(UiComponentType.INPUT, "Search restaurants", "Pizza, sushi, burgers", "White", "Ink", true, false, 14, 18, "start"));
+        template.add(new UiComponent(UiComponentType.DROPDOWN, "Delivery time", "ASAP", "Ice", "Cobalt", false, false, 14, 18, "start"));
+        template.add(new UiComponent(UiComponentType.CARD, "Green Bowl", "25-35 min - 4.8 rating", "White", "Mint", true, false, 18, 24, "start"));
+        template.add(new UiComponent(UiComponentType.BUTTON, "View menu", "", "Sunset", "White", false, true, 16, 20, "center"));
+        return template;
+    }
+
+    private List<UiComponent> createFitnessTemplate() {
+        List<UiComponent> template = new ArrayList<>();
+        template.add(new UiComponent(UiComponentType.HEADER, "Today workout", "Strength plan and activity summary", "Charcoal", "Gold", true, true, 22, 28, "start"));
+        template.add(new UiComponent(UiComponentType.PROGRESS, "Daily movement", "68%", "White", "Mint", true, false, 14, 18, "start"));
+        template.add(new UiComponent(UiComponentType.CHECKBOX, "Warmup complete", "Checked", "Ice", "Cobalt", true, false, 12, 16, "start"));
+        template.add(new UiComponent(UiComponentType.CARD, "Next exercise", "3 sets - Dumbbell row", "White", "Sunset", true, false, 18, 24, "start"));
+        template.add(new UiComponent(UiComponentType.BUTTON, "Start workout", "", "Mint", "White", false, true, 16, 20, "center"));
         return template;
     }
 
@@ -639,6 +756,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                                 resizeHandlesVisible = false;
                             }
                             logDebug("Tap selected index=" + index + " type=" + component.getType());
+                            openInspectorDrawer();
                         } else if (moved) {
                             bindInspector();
                         }
@@ -813,6 +931,21 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void positionContainer(View container, UiComponent component) {
         FrameLayout.LayoutParams params = canvasItemLayoutParams(component);
         container.setLayoutParams(params);
+    }
+
+    private int inspectorDrawerWidth() {
+        return Math.min(dp(360), Math.max(dp(280), getResources().getDisplayMetrics().widthPixels - dp(28)));
+    }
+
+    private void openInspectorDrawer() {
+        if (inspectorPopup == null || selectedIndex < 0 || selectedIndex >= components.size()) {
+            return;
+        }
+        inspectorPopup.setWidth(inspectorDrawerWidth());
+        if (!inspectorPopup.isShowing()) {
+            inspectorPopup.showAtLocation(binding.getRoot(), Gravity.END, 0, 0);
+            logDebug("Inspector drawer opened index=" + selectedIndex);
+        }
     }
 
     private void showResizeHandles(View touchedView, int index) {
@@ -1716,6 +1849,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         resizeHandlesVisible = false;
         logDebug("Layer selected index=" + position);
         refreshAll();
+        openInspectorDrawer();
     }
 
     @Override

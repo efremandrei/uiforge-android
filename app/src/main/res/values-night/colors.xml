@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="surface_base">#101820</color>
+    <color name="surface_primary">#172432</color>
+    <color name="surface_selected">#22364A</color>
+    <color name="stroke_soft">#385064</color>
+    <color name="text_strong">#F5EFE6</color>
+    <color name="text_soft">#B9C4CF</color>
+    <color name="text_on_dark">#FFF8F1</color>
+    <color name="text_on_dark_soft">#DCCEC0</color>
+    <color name="hero_input">#203A53</color>
+    <color name="accent_cobalt">#6EA8FE</color>
+    <color name="accent_mint">#39C5AA</color>
+    <color name="accent_sunset">#FF8A70</color>
+    <color name="accent_gold">#F2C96D</color>
+</resources>
