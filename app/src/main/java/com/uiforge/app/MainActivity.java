@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.DragEvent;
 import android.view.Gravity;
@@ -34,6 +35,10 @@ import androidx.annotation.ColorInt;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.button.MaterialButton;
@@ -63,6 +68,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements LayerAdapter.LayerActionListener {
+    private static final String LOG_TAG = "UIForge";
     private static final String STATE_PROJECT_NAME = "project_name";
     private static final String STATE_COMPONENTS = "components";
     private static final String STATE_SELECTION = "selection";
@@ -86,9 +92,11 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        logDebug("onCreate start savedState=" + (savedInstanceState != null));
         configureSystemBars();
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        setupSystemBarInsets();
 
         seedPalette();
         setupToolbar();
@@ -108,10 +116,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
         wireDropdowns();
         refreshAll();
+        logDebug("onCreate ready components=" + components.size() + " selectedIndex=" + selectedIndex);
     }
 
     private void configureSystemBars() {
         Window window = getWindow();
+        WindowCompat.setDecorFitsSystemWindows(window, false);
         window.setStatusBarColor(Color.BLACK);
         window.setNavigationBarColor(ContextCompat.getColor(this, R.color.surface_base));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -122,6 +132,23 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             View decor = window.getDecorView();
             decor.setSystemUiVisibility(decor.getSystemUiVisibility() & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         }
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
+        controller.setAppearanceLightStatusBars(false);
+        controller.setAppearanceLightNavigationBars(true);
+        logDebug("Configured system bars: black status bar, edgeToEdgeScrim=true sdk=" + Build.VERSION.SDK_INT);
+    }
+
+    private void setupSystemBarInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (view, insets) -> {
+            int statusTop = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            int navigationBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+            binding.statusBarScrim.getLayoutParams().height = statusTop;
+            binding.statusBarScrim.requestLayout();
+            binding.getRoot().setPadding(0, 0, 0, navigationBottom);
+            logDebug("Applied system insets statusTopPx=" + statusTop + " navBottomPx=" + navigationBottom);
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(binding.getRoot());
     }
 
     private void seedPalette() {
@@ -289,6 +316,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void applyTemplate(List<UiComponent> template, String projectName) {
+        logDebug("Applying template project=" + projectName + " count=" + template.size());
         components.clear();
         components.addAll(template);
         assignDefaultPositions(components);
@@ -477,10 +505,15 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         selectedIndex = index;
                         layerAdapter.setSelectedPosition(selectedIndex);
                         bindInspector();
+                        logDebug("Touch down index=" + index + " type=" + component.getType()
+                                + " xDp=" + component.getXdp() + " yDp=" + component.getYdp()
+                                + " widthDp=" + resolveComponentWidthDp(component)
+                                + " heightDp=" + resolveComponentHeightDp(component));
                         longPressAction = () -> {
                             if (selectedIndex == index) {
                                 longPressed = true;
                                 resizeHandlesVisible = true;
+                                logDebug("Long press resize mode index=" + index + " type=" + component.getType());
                                 showResizeHandles(touchedView, index);
                             }
                         };
@@ -502,6 +535,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                             component.setXdp(startXdp + pxToDp(dx));
                             component.setYdp(startYdp + pxToDp(dy));
                             clampComponentToCanvas(component);
+                            logDebug("Move index=" + index + " xDp=" + component.getXdp() + " yDp=" + component.getYdp());
                             View container = findCanvasContainer(touchedView);
                             if (container != null) {
                                 positionContainer(container, component);
@@ -588,6 +622,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         startYdp = component.getYdp();
                         startWidthDp = Math.max(MIN_WIDGET_WIDTH_DP, resolveComponentWidthDp(component));
                         startHeightDp = resolveComponentHeightDp(component);
+                        logDebug("Resize start index=" + index + " direction=" + direction
+                                + " xDp=" + startXdp + " yDp=" + startYdp
+                                + " widthDp=" + startWidthDp + " heightDp=" + startHeightDp);
                         return true;
                     case MotionEvent.ACTION_MOVE:
                         int dx = pxToDp(event.getRawX() - downRawX);
@@ -628,6 +665,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         component.setWidthDp(nextWidth);
                         component.setHeightDp(nextHeight);
                         clampComponentToCanvas(component);
+                        logDebug("Resize move index=" + index + " direction=" + direction
+                                + " xDp=" + component.getXdp() + " yDp=" + component.getYdp()
+                                + " widthDp=" + resolveComponentWidthDp(component)
+                                + " heightDp=" + resolveComponentHeightDp(component));
                         if (container != null) {
                             positionContainer(container, component);
                         }
@@ -690,6 +731,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         components.add(component);
         selectedIndex = components.size() - 1;
         resizeHandlesVisible = false;
+        logDebug("Palette drop type=" + type + " canvasX=" + dropX + " canvasY=" + dropY
+                + " index=" + selectedIndex + " xDp=" + component.getXdp()
+                + " yDp=" + component.getYdp() + " widthDp=" + resolveComponentWidthDp(component)
+                + " heightDp=" + resolveComponentHeightDp(component));
     }
 
     private void clampComponentToCanvas(UiComponent component) {
@@ -1143,6 +1188,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         if (selectedIndex < 0 || selectedIndex >= components.size()) {
             return;
         }
+        UiComponent removed = components.get(selectedIndex);
+        logDebug("Delete component index=" + selectedIndex + " type=" + removed.getType());
         components.remove(selectedIndex);
         if (components.isEmpty()) {
             selectedIndex = -1;
@@ -1156,6 +1203,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void showExportDialog() {
         try {
             String payload = buildProjectJson().toString(2);
+            logDebug("Export JSON opened components=" + components.size() + " bytes=" + payload.length());
             TextView exportText = dialogText(payload);
             exportText.setTypeface(Typeface.MONOSPACE);
             exportText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
@@ -1168,6 +1216,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                     .setNegativeButton(R.string.close_label, null)
                     .show();
         } catch (JSONException e) {
+            logError("Export JSON failed", e);
             Toast.makeText(this, R.string.export_failed, Toast.LENGTH_SHORT).show();
         }
     }
@@ -1204,6 +1253,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private void saveProjectWithOverwriteCheck(String requestedName) {
         File projectFile = getProjectFile(requestedName);
+        logDebug("Save requested name=" + requestedName + " path=" + projectFile.getAbsolutePath()
+                + " exists=" + projectFile.exists());
         if (projectFile.exists()) {
             new MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.overwrite_project_title)
@@ -1229,13 +1280,17 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             }
             binding.projectNameInput.setText(projectName);
             Toast.makeText(this, R.string.project_saved, Toast.LENGTH_SHORT).show();
+            logDebug("Project saved name=" + projectName + " path=" + projectFile.getAbsolutePath()
+                    + " components=" + components.size() + " bytes=" + projectFile.length());
         } catch (IOException | JSONException e) {
+            logError("Project save failed path=" + projectFile.getAbsolutePath(), e);
             Toast.makeText(this, R.string.project_save_failed, Toast.LENGTH_SHORT).show();
         }
     }
 
     private void showLoadProjectDialog() {
         File[] savedProjects = listSavedProjectFiles();
+        logDebug("Load dialog opened savedCount=" + savedProjects.length);
         if (savedProjects.length == 0) {
             Toast.makeText(this, R.string.no_saved_projects, Toast.LENGTH_SHORT).show();
             return;
@@ -1305,6 +1360,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void loadProjectFile(File projectFile) {
+        logDebug("Project load start path=" + projectFile.getAbsolutePath() + " bytes=" + projectFile.length());
         try (FileInputStream stream = new FileInputStream(projectFile)) {
             byte[] bytes = new byte[(int) projectFile.length()];
             int read = stream.read(bytes);
@@ -1314,7 +1370,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             JSONObject root = new JSONObject(new String(bytes, 0, read, StandardCharsets.UTF_8));
             applyProjectJson(root);
             Toast.makeText(this, R.string.project_loaded, Toast.LENGTH_SHORT).show();
+            logDebug("Project load success path=" + projectFile.getAbsolutePath()
+                    + " components=" + components.size());
         } catch (IOException | JSONException e) {
+            logError("Project load failed path=" + projectFile.getAbsolutePath(), e);
             Toast.makeText(this, R.string.project_load_failed, Toast.LENGTH_SHORT).show();
         }
     }
@@ -1382,6 +1441,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.projectNameInput.setText(root.optString("projectName", "Untitled Flow"));
         selectedIndex = components.isEmpty() ? -1 : 0;
         resizeHandlesVisible = false;
+        logDebug("Applied project JSON name=" + root.optString("projectName", "Untitled Flow")
+                + " components=" + components.size());
         refreshAll();
     }
 
@@ -1466,12 +1527,14 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     public void onSelect(int position) {
         selectedIndex = position;
         resizeHandlesVisible = false;
+        logDebug("Layer selected index=" + position);
         refreshAll();
     }
 
     @Override
     public void onDelete(int position) {
         selectedIndex = position;
+        logDebug("Layer delete requested index=" + position);
         deleteSelected();
     }
 
@@ -1504,6 +1567,14 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private int pxToDp(float value) {
         return Math.round(value / getResources().getDisplayMetrics().density);
+    }
+
+    private void logDebug(String message) {
+        Log.d(LOG_TAG, message);
+    }
+
+    private void logError(String message, Throwable throwable) {
+        Log.e(LOG_TAG, message, throwable);
     }
 
     private int adjustAlpha(int color, float factor) {
