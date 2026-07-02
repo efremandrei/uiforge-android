@@ -112,10 +112,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private int dragTargetIndex = -1;
     private long lastMoveFileLogAtMs;
     private Uri cachedDownloadsLogUri;
+    private Thread.UncaughtExceptionHandler previousUncaughtExceptionHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        installCrashLogger();
         logDebug("onCreate start savedState=" + (savedInstanceState != null));
         configureSystemBars();
         binding = ActivityMainBinding.inflate(getLayoutInflater());
@@ -522,6 +524,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
             @Override
             public boolean onTouch(View touchedView, MotionEvent event) {
+                try {
                 if (index < 0 || index >= components.size()) {
                     return false;
                 }
@@ -594,13 +597,17 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         }
                         if (!moved && !longPressed) {
                             resizeHandlesVisible = false;
-                            refreshAll();
+                            logDebug("Tap selected index=" + index + " type=" + component.getType());
                         } else if (moved) {
                             bindInspector();
                         }
                         return true;
                     default:
                         return true;
+                }
+                } catch (Throwable throwable) {
+                    logError("Canvas touch failed index=" + index + " action=" + event.getActionMasked(), throwable);
+                    return true;
                 }
             }
         });
@@ -643,6 +650,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
             @Override
             public boolean onTouch(View handle, MotionEvent event) {
+                try {
                 if (index < 0 || index >= components.size()) {
                     return false;
                 }
@@ -717,6 +725,11 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         return true;
                     default:
                         return true;
+                }
+                } catch (Throwable throwable) {
+                    logError("Resize touch failed index=" + index + " direction=" + direction
+                            + " action=" + event.getActionMasked(), throwable);
+                    return true;
                 }
             }
         };
@@ -1616,6 +1629,24 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void logError(String message, Throwable throwable) {
         Log.e(LOG_TAG, message, throwable);
         writeFileLog("E", message, throwable);
+    }
+
+    private void installCrashLogger() {
+        if (previousUncaughtExceptionHandler != null) {
+            return;
+        }
+        previousUncaughtExceptionHandler = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            String line = buildFileLogLine("E", "Uncaught exception thread=" + thread.getName(), throwable);
+            try {
+                appendToDownloadsLog(line);
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "Could not write uncaught exception to Downloads/" + FILE_LOG_NAME, e);
+            }
+            if (previousUncaughtExceptionHandler != null) {
+                previousUncaughtExceptionHandler.uncaughtException(thread, throwable);
+            }
+        });
     }
 
     private boolean shouldWriteDebugToFile(String message) {
