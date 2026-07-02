@@ -459,7 +459,6 @@
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/inspectorDrawer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
@@ -512,6 +511,7 @@
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/inspectorDrawer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
@@ -542,6 +542,17 @@
                             android:textColor="@color/text_strong"
                             android:textSize="18sp"
                             android:textStyle="bold" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/closeInspectorDrawerButton"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="44dp"
+                            android:layout_height="40dp"
+                            android:minWidth="0dp"
+                            android:padding="0dp"
+                            android:text="@string/close_drawer"
+                            android:textColor="@color/text_strong"
+                            android:textSize="15sp" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/inspectorHelpButton"

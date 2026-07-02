@@ -285,6 +285,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.previewHelpButton.setOnClickListener(v -> showHelpDialog(R.string.preview_title, R.string.help_preview));
         binding.layersHelpButton.setOnClickListener(v -> showHelpDialog(R.string.layers_title, R.string.help_layers));
         binding.inspectorHelpButton.setOnClickListener(v -> showHelpDialog(R.string.inspector_title, R.string.help_inspector));
+        binding.closeInspectorDrawerButton.setOnClickListener(v -> closeInspectorDrawer());
     }
 
     private void configureHelpButton(MaterialButton button, boolean onDarkBackground) {
@@ -945,6 +946,13 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         if (!inspectorPopup.isShowing()) {
             inspectorPopup.showAtLocation(binding.getRoot(), Gravity.END, 0, 0);
             logDebug("Inspector drawer opened index=" + selectedIndex);
+        }
+    }
+
+    private void closeInspectorDrawer() {
+        if (inspectorPopup != null && inspectorPopup.isShowing()) {
+            inspectorPopup.dismiss();
+            logDebug("Inspector drawer closed");
         }
     }
 

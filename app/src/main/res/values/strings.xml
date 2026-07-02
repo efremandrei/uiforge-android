@@ -9,6 +9,7 @@
     <string name="load_project">Load</string>
     <string name="export_json">Export</string>
     <string name="help_icon">?</string>
+    <string name="close_drawer">&gt;&gt;</string>
     <string name="toolbar_help">Help</string>
     <string name="toolbar_about">About</string>
     <string name="dark_skin">Dark skin</string>
