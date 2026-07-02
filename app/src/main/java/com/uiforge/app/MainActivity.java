@@ -7,6 +7,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.ContentUris;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -21,6 +22,7 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.DragEvent;
 import android.view.Gravity;
+import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -89,6 +91,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private static final String FILE_LOG_NAME = "uidesignerFailLog.txt";
     private static final String FILE_LOG_PREFS = "uiforge_file_log";
     private static final String FILE_LOG_URI_PREF = "downloads_log_uri";
+    private static final int MENU_HELP = 1001;
+    private static final int MENU_ABOUT = 1002;
     private static final String STATE_PROJECT_NAME = "project_name";
     private static final String STATE_COMPONENTS = "components";
     private static final String STATE_SELECTION = "selection";
@@ -199,18 +203,54 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void setupToolbar() {
         binding.toolbar.setTitle(getString(R.string.app_name));
         binding.toolbar.setSubtitle(null);
+        binding.toolbar.getMenu().add(Menu.NONE, MENU_HELP, Menu.NONE, R.string.toolbar_help)
+                .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER);
+        binding.toolbar.getMenu().add(Menu.NONE, MENU_ABOUT, Menu.NONE, R.string.toolbar_about)
+                .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER);
+        binding.toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == MENU_HELP) {
+                showHelpScreen();
+                return true;
+            }
+            if (item.getItemId() == MENU_ABOUT) {
+                showAboutDialog();
+                return true;
+            }
+            return false;
+        });
         binding.saveProjectButton.setOnClickListener(v -> showSaveProjectDialog());
         binding.loadProjectButton.setOnClickListener(v -> showLoadProjectDialog());
         binding.exportButton.setOnClickListener(v -> showExportDialog());
     }
 
     private void setupHelpButtons() {
-        binding.heroHelpButton.setOnClickListener(v -> showHelpDialog(R.string.app_name, R.string.help_overview));
+        configureHelpButton(binding.heroHelpButton, true);
+        configureHelpButton(binding.paletteHelpButton, false);
+        configureHelpButton(binding.templatesHelpButton, false);
+        configureHelpButton(binding.previewHelpButton, false);
+        configureHelpButton(binding.layersHelpButton, false);
+        configureHelpButton(binding.inspectorHelpButton, false);
+        binding.heroHelpButton.setOnClickListener(v -> showHelpScreen());
         binding.paletteHelpButton.setOnClickListener(v -> showHelpDialog(R.string.palette_title, R.string.help_palette));
         binding.templatesHelpButton.setOnClickListener(v -> showHelpDialog(R.string.templates_title, R.string.help_templates));
         binding.previewHelpButton.setOnClickListener(v -> showHelpDialog(R.string.preview_title, R.string.help_preview));
         binding.layersHelpButton.setOnClickListener(v -> showHelpDialog(R.string.layers_title, R.string.help_layers));
         binding.inspectorHelpButton.setOnClickListener(v -> showHelpDialog(R.string.inspector_title, R.string.help_inspector));
+    }
+
+    private void configureHelpButton(MaterialButton button, boolean onDarkBackground) {
+        int color = ContextCompat.getColor(this, onDarkBackground ? R.color.text_on_dark : R.color.text_strong);
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(Color.TRANSPARENT);
+        circle.setStroke(dp(2), color);
+        button.setBackground(circle);
+        button.setTextColor(color);
+        button.setMinWidth(0);
+        button.setMinHeight(0);
+        button.setInsetTop(0);
+        button.setInsetBottom(0);
+        button.setPadding(0, 0, 0, 0);
     }
 
     private void setupLists() {
@@ -1450,6 +1490,41 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 .setView(dialogText(getString(messageResId)))
                 .setPositiveButton(R.string.close_label, null)
                 .show();
+    }
+
+    private void showHelpScreen() {
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.addView(dialogText(getString(R.string.help_screen_body)));
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.help_screen_title)
+                .setView(scrollView)
+                .setPositiveButton(R.string.close_label, null)
+                .show();
+    }
+
+    private void showAboutDialog() {
+        LinearLayout content = dialogColumn();
+        content.addView(dialogText(getString(R.string.about_creator)));
+        content.addView(dialogText(getString(R.string.about_version, getAppVersionName())));
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.about_title)
+                .setView(content)
+                .setPositiveButton(R.string.close_label, null)
+                .show();
+    }
+
+    private String getAppVersionName() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                return getPackageManager()
+                        .getPackageInfo(getPackageName(), PackageManager.PackageInfoFlags.of(0))
+                        .versionName;
+            }
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (PackageManager.NameNotFoundException e) {
+            logError("Could not read app version", e);
+            return "unknown";
+        }
     }
 
     private LinearLayout dialogColumn() {

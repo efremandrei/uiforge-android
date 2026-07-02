@@ -9,6 +9,8 @@
     <string name="load_project">Load</string>
     <string name="export_json">Export</string>
     <string name="help_icon">?</string>
+    <string name="toolbar_help">Help</string>
+    <string name="toolbar_about">About</string>
     <string name="palette_title">Palette</string>
     <string name="palette_subtitle">Long-press a block, drag it onto the phone, and drop it where the screen should place it.</string>
     <string name="add_header">Header</string>
@@ -82,4 +84,9 @@
     <string name="help_preview">Tap a component to edit it. Drag it freely on the canvas. Long-press it to show edge and corner resize markers.</string>
     <string name="help_layers">Tap a layer to select it. Delete removes the selected layer.</string>
     <string name="help_inspector">Edit selected layer content, colors, width, height, text size, padding, corners, alignment, and style.</string>
+    <string name="help_screen_title">How to use UI Forge</string>
+    <string name="help_screen_body">1. Name your project at the top.\n\n2. Add elements by long-pressing a palette item, then dragging it onto the phone preview.\n\n3. Move a widget by dragging its body inside the phone mockup.\n\n4. Resize a widget by long-pressing it. Yellow resize handles appear around it. Drag side handles for width or height, and corner handles for both.\n\n5. Select a widget by tapping it or tapping it in Layers.\n\n6. Edit the selected widget in Inspector: title, helper text, colors, width, height, text size, padding, corner radius, alignment, and style.\n\n7. Save stores the project locally on this device. Load opens saved projects. Export copies the design as JSON.\n\n8. If something fails, send Downloads/uidesignerFailLog.txt.</string>
+    <string name="about_title">About UI Forge</string>
+    <string name="about_creator">Creator: Andrei Efr</string>
+    <string name="about_version">Version: %1$s</string>
 </resources>
