@@ -28,9 +28,9 @@
     <string name="template_profile">Profile</string>
     <string name="template_onboarding">Onboarding</string>
     <string name="preview_title">Live Preview</string>
-    <string name="preview_subtitle">Drag blocks in from the palette or long-press existing blocks to reposition them.</string>
+    <string name="preview_subtitle">Drag blocks in from the palette. Drag existing blocks freely; long-press a block to show resize markers.</string>
     <string name="layers_title">Layers</string>
-    <string name="layers_subtitle">Tap a layer to edit it. Reordering happens directly on the phone preview.</string>
+    <string name="layers_subtitle">Tap a layer to edit it. Position and size are controlled directly on the phone preview.</string>
     <string name="inspector_title">Inspector</string>
     <string name="component_title">Component title</string>
     <string name="supporting_text">Supporting text</string>
@@ -48,7 +48,7 @@
     <string name="align_center">Center</string>
     <string name="align_end">End</string>
     <string name="delete_component">Delete component</string>
-    <string name="arrangement_hint">Arrangement is drag-and-drop now. Long-press the selected block on the phone preview and place it where you want it.</string>
+    <string name="arrangement_hint">Drag the selected block directly on the phone preview. Long-press it to show resize markers.</string>
     <string name="export_title">Design JSON</string>
     <string name="save_project_title">Save project locally</string>
     <string name="save_project_message">Choose a name for this design. It will be stored in the app private files on this device.</string>
@@ -79,7 +79,7 @@
     <string name="help_overview">Drag blocks from the palette into the phone preview. Save and load projects locally, or export the design as JSON.</string>
     <string name="help_palette">Long-press a component type and drop it on the phone preview.</string>
     <string name="help_templates">Starter flows replace the current canvas with a ready-made set of components.</string>
-    <string name="help_preview">Tap a component to edit it. Long-press a component and drag it to reorder the screen.</string>
+    <string name="help_preview">Tap a component to edit it. Drag it freely on the canvas. Long-press it to show edge and corner resize markers.</string>
     <string name="help_layers">Tap a layer to select it. Delete removes the selected layer.</string>
     <string name="help_inspector">Edit selected layer content, colors, width, height, text size, padding, corners, alignment, and style.</string>
 </resources>

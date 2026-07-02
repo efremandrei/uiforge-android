@@ -14,11 +14,14 @@ import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.DragEvent;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -65,6 +68,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private static final String STATE_SELECTION = "selection";
     private static final String PROJECTS_DIR = "projects";
     private static final String PROJECT_EXTENSION = ".uiforge.json";
+    private static final int CANVAS_WIDTH_DP = 252;
+    private static final int CANVAS_HEIGHT_DP = 520;
+    private static final int MIN_WIDGET_WIDTH_DP = 48;
+    private static final int MIN_WIDGET_HEIGHT_DP = 24;
 
     private ActivityMainBinding binding;
     private final List<UiComponent> components = new ArrayList<>();
@@ -72,6 +79,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private LayerAdapter layerAdapter;
     private boolean bindingInspector;
     private boolean dragInProgress;
+    private boolean resizeHandlesVisible;
     private int selectedIndex = -1;
     private int dragTargetIndex = -1;
 
@@ -220,7 +228,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 int width = progress + 30;
                 binding.widthValueLabel.setText(getString(R.string.percent_value, width));
                 if (fromUser) {
-                    updateSelected(component -> component.setWidthPercent(width));
+                    updateSelected(component -> {
+                        component.setFullWidth(false);
+                        component.setWidthPercent(width);
+                    });
                 }
             }
         });
@@ -280,8 +291,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void applyTemplate(List<UiComponent> template, String projectName) {
         components.clear();
         components.addAll(template);
+        assignDefaultPositions(components);
         binding.projectNameInput.setText(projectName);
         selectedIndex = components.isEmpty() ? -1 : 0;
+        resizeHandlesVisible = false;
         refreshAll();
     }
 
@@ -389,34 +402,313 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void renderPreview() {
         binding.previewCanvas.removeAllViews();
         if (components.isEmpty() && !dragInProgress) {
-            binding.previewCanvas.addView(createEmptyCanvasState());
+            View empty = createEmptyCanvasState();
+            empty.setOnDragListener(this::handlePreviewCanvasDrag);
+            binding.previewCanvas.addView(empty, fullCanvasLayoutParams());
             return;
         }
         for (int i = 0; i < components.size(); i++) {
-            if (dragInProgress && dragTargetIndex == i) {
-                binding.previewCanvas.addView(createDropIndicator(), dropIndicatorLayoutParams());
-            }
             UiComponent component = components.get(i);
-            View preview = createPreviewView(component, i == selectedIndex);
-            preview.setTag(Integer.valueOf(i));
-            preview.setOnClickListener(v -> {
-                selectedIndex = (Integer) v.getTag();
-                refreshAll();
-            });
-            preview.setOnLongClickListener(v -> startExistingComponentDrag(v, (Integer) v.getTag()));
-
-            int previewWidth = binding.previewCanvas.getWidth() > 0 ? binding.previewCanvas.getWidth() : dp(252);
-            int width = component.isFullWidth()
-                    ? LinearLayout.LayoutParams.MATCH_PARENT
-                    : Math.max(dp(96), Math.round(previewWidth * (component.getWidthPercent() / 100f)));
-            int height = component.getHeightDp() == 0 ? LinearLayout.LayoutParams.WRAP_CONTENT : dp(component.getHeightDp());
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, height);
-            params.topMargin = dp(i == 0 && (!dragInProgress || dragTargetIndex != 0) ? 0 : 14);
-            params.gravity = resolveGravity(component.getAlignment());
-            binding.previewCanvas.addView(preview, params);
+            clampComponentToCanvas(component);
+            FrameLayout container = createCanvasItemContainer(component, i);
+            binding.previewCanvas.addView(container, canvasItemLayoutParams(component));
         }
-        if (dragInProgress && dragTargetIndex == components.size()) {
-            binding.previewCanvas.addView(createDropIndicator(), dropIndicatorLayoutParams());
+    }
+
+    private FrameLayout createCanvasItemContainer(UiComponent component, int index) {
+        FrameLayout container = new FrameLayout(this);
+        container.setTag(Integer.valueOf(index));
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
+        container.setOnDragListener(this::handlePreviewCanvasDrag);
+        View preview = createPreviewView(component, index == selectedIndex);
+        preview.setTag(Integer.valueOf(index));
+        preview.setOnDragListener(this::handlePreviewCanvasDrag);
+        installCanvasTouch(preview, index);
+        installCanvasTouch(container, index);
+        int previewHeight = component.getHeightDp() == 0
+                ? FrameLayout.LayoutParams.WRAP_CONTENT
+                : FrameLayout.LayoutParams.MATCH_PARENT;
+        container.addView(preview, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                previewHeight));
+        if (index == selectedIndex && resizeHandlesVisible) {
+            addResizeHandles(container, index);
+        }
+        return container;
+    }
+
+    private FrameLayout.LayoutParams fullCanvasLayoutParams() {
+        return new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+    }
+
+    private FrameLayout.LayoutParams canvasItemLayoutParams(UiComponent component) {
+        int height = component.getHeightDp() == 0 ? FrameLayout.LayoutParams.WRAP_CONTENT : dp(component.getHeightDp());
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(resolveComponentWidthDp(component)), height);
+        params.leftMargin = dp(component.getXdp());
+        params.topMargin = dp(component.getYdp());
+        return params;
+    }
+
+    private void installCanvasTouch(View view, int index) {
+        int touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
+        view.setOnTouchListener(new View.OnTouchListener() {
+            private float downRawX;
+            private float downRawY;
+            private int startXdp;
+            private int startYdp;
+            private boolean moved;
+            private boolean longPressed;
+            private Runnable longPressAction;
+
+            @Override
+            public boolean onTouch(View touchedView, MotionEvent event) {
+                if (index < 0 || index >= components.size()) {
+                    return false;
+                }
+                UiComponent component = components.get(index);
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downRawX = event.getRawX();
+                        downRawY = event.getRawY();
+                        startXdp = component.getXdp();
+                        startYdp = component.getYdp();
+                        moved = false;
+                        longPressed = false;
+                        selectedIndex = index;
+                        layerAdapter.setSelectedPosition(selectedIndex);
+                        bindInspector();
+                        longPressAction = () -> {
+                            if (selectedIndex == index) {
+                                longPressed = true;
+                                resizeHandlesVisible = true;
+                                refreshAll();
+                            }
+                        };
+                        touchedView.postDelayed(longPressAction, ViewConfiguration.getLongPressTimeout());
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        float dx = event.getRawX() - downRawX;
+                        float dy = event.getRawY() - downRawY;
+                        if (!longPressed && (moved || Math.hypot(dx, dy) > touchSlop)) {
+                            moved = true;
+                            if (longPressAction != null) {
+                                touchedView.removeCallbacks(longPressAction);
+                            }
+                            resizeHandlesVisible = false;
+                            component.setXdp(startXdp + pxToDp(dx));
+                            component.setYdp(startYdp + pxToDp(dy));
+                            clampComponentToCanvas(component);
+                            View container = findCanvasContainer(touchedView);
+                            if (container != null) {
+                                positionContainer(container, component);
+                            }
+                        }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        if (longPressAction != null) {
+                            touchedView.removeCallbacks(longPressAction);
+                        }
+                        if (!moved && !longPressed) {
+                            resizeHandlesVisible = false;
+                            refreshAll();
+                        } else if (moved) {
+                            bindInspector();
+                        }
+                        return true;
+                    default:
+                        return true;
+                }
+            }
+        });
+    }
+
+    private void addResizeHandles(FrameLayout container, int index) {
+        addResizeHandle(container, index, "top_left", Gravity.TOP | Gravity.START);
+        addResizeHandle(container, index, "top", Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        addResizeHandle(container, index, "top_right", Gravity.TOP | Gravity.END);
+        addResizeHandle(container, index, "right", Gravity.CENTER_VERTICAL | Gravity.END);
+        addResizeHandle(container, index, "bottom_right", Gravity.BOTTOM | Gravity.END);
+        addResizeHandle(container, index, "bottom", Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        addResizeHandle(container, index, "bottom_left", Gravity.BOTTOM | Gravity.START);
+        addResizeHandle(container, index, "left", Gravity.CENTER_VERTICAL | Gravity.START);
+    }
+
+    private void addResizeHandle(FrameLayout container, int index, String direction, int gravity) {
+        View handle = new View(this);
+        handle.setBackgroundResource(R.drawable.bg_resize_handle);
+        handle.setOnTouchListener(resizeHandleTouchListener(index, direction));
+        int size = dp(16);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(size, size, gravity);
+        int offset = -dp(7);
+        if ((gravity & Gravity.START) == Gravity.START) {
+            params.leftMargin = offset;
+        }
+        if ((gravity & Gravity.TOP) == Gravity.TOP) {
+            params.topMargin = offset;
+        }
+        if ((gravity & Gravity.END) == Gravity.END) {
+            params.rightMargin = offset;
+        }
+        if ((gravity & Gravity.BOTTOM) == Gravity.BOTTOM) {
+            params.bottomMargin = offset;
+        }
+        container.addView(handle, params);
+    }
+
+    private View.OnTouchListener resizeHandleTouchListener(int index, String direction) {
+        return new View.OnTouchListener() {
+            private float downRawX;
+            private float downRawY;
+            private int startXdp;
+            private int startYdp;
+            private int startWidthDp;
+            private int startHeightDp;
+
+            @Override
+            public boolean onTouch(View handle, MotionEvent event) {
+                if (index < 0 || index >= components.size()) {
+                    return false;
+                }
+                UiComponent component = components.get(index);
+                View container = findCanvasContainer(handle);
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        handle.getParent().requestDisallowInterceptTouchEvent(true);
+                        selectedIndex = index;
+                        resizeHandlesVisible = true;
+                        downRawX = event.getRawX();
+                        downRawY = event.getRawY();
+                        startXdp = component.getXdp();
+                        startYdp = component.getYdp();
+                        startWidthDp = Math.max(MIN_WIDGET_WIDTH_DP, resolveComponentWidthDp(component));
+                        startHeightDp = Math.max(MIN_WIDGET_HEIGHT_DP, component.getHeightDp() > 0
+                                ? component.getHeightDp()
+                                : container == null ? MIN_WIDGET_HEIGHT_DP : pxToDp(container.getHeight()));
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        int dx = pxToDp(event.getRawX() - downRawX);
+                        int dy = pxToDp(event.getRawY() - downRawY);
+                        int nextX = startXdp;
+                        int nextY = startYdp;
+                        int nextWidth = startWidthDp;
+                        int nextHeight = startHeightDp;
+                        if (direction.contains("right")) {
+                            nextWidth = startWidthDp + dx;
+                        }
+                        if (direction.contains("left")) {
+                            nextWidth = startWidthDp - dx;
+                            nextX = startXdp + dx;
+                        }
+                        if (direction.contains("bottom")) {
+                            nextHeight = startHeightDp + dy;
+                        }
+                        if (direction.contains("top")) {
+                            nextHeight = startHeightDp - dy;
+                            nextY = startYdp + dy;
+                        }
+                        if (nextWidth < MIN_WIDGET_WIDTH_DP) {
+                            if (direction.contains("left")) {
+                                nextX -= MIN_WIDGET_WIDTH_DP - nextWidth;
+                            }
+                            nextWidth = MIN_WIDGET_WIDTH_DP;
+                        }
+                        if (nextHeight < MIN_WIDGET_HEIGHT_DP) {
+                            if (direction.contains("top")) {
+                                nextY -= MIN_WIDGET_HEIGHT_DP - nextHeight;
+                            }
+                            nextHeight = MIN_WIDGET_HEIGHT_DP;
+                        }
+                        component.setFullWidth(false);
+                        component.setXdp(nextX);
+                        component.setYdp(nextY);
+                        component.setWidthDp(nextWidth);
+                        component.setHeightDp(nextHeight);
+                        clampComponentToCanvas(component);
+                        if (container != null) {
+                            positionContainer(container, component);
+                        }
+                        bindInspector();
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        refreshAll();
+                        return true;
+                    default:
+                        return true;
+                }
+            }
+        };
+    }
+
+    private View findCanvasContainer(View view) {
+        View current = view;
+        while (current != null && current.getParent() instanceof View) {
+            if (current.getParent() == binding.previewCanvas) {
+                return current;
+            }
+            current = (View) current.getParent();
+        }
+        return view.getParent() == binding.previewCanvas ? view : null;
+    }
+
+    private void positionContainer(View container, UiComponent component) {
+        FrameLayout.LayoutParams params = canvasItemLayoutParams(component);
+        container.setLayoutParams(params);
+    }
+
+    private void addPaletteComponentAt(UiComponentType type, float dropX, float dropY) {
+        UiComponent component = UiComponent.createDefault(type);
+        component.setXdp(pxToDp(dropX) - 24);
+        component.setYdp(pxToDp(dropY) - 24);
+        clampComponentToCanvas(component);
+        components.add(component);
+        selectedIndex = components.size() - 1;
+        resizeHandlesVisible = false;
+    }
+
+    private void clampComponentToCanvas(UiComponent component) {
+        int width = resolveComponentWidthDp(component);
+        int height = component.getHeightDp() > 0 ? component.getHeightDp() : MIN_WIDGET_HEIGHT_DP;
+        int maxX = Math.max(0, canvasWidthDp() - width);
+        int maxY = Math.max(0, canvasHeightDp() - height);
+        component.setXdp(clamp(component.getXdp(), 0, maxX));
+        component.setYdp(clamp(component.getYdp(), 0, maxY));
+        if (component.getWidthDp() > 0) {
+            component.setWidthDp(Math.min(component.getWidthDp(), canvasWidthDp()));
+        }
+        if (component.getHeightDp() > 0) {
+            component.setHeightDp(Math.min(component.getHeightDp(), canvasHeightDp()));
+        }
+    }
+
+    private int resolveComponentWidthDp(UiComponent component) {
+        int canvasWidth = canvasWidthDp();
+        if (component.getWidthDp() > 0) {
+            return clamp(component.getWidthDp(), MIN_WIDGET_WIDTH_DP, canvasWidth);
+        }
+        if (component.isFullWidth()) {
+            return Math.max(MIN_WIDGET_WIDTH_DP, canvasWidth - component.getXdp());
+        }
+        return clamp(Math.round(canvasWidth * (component.getWidthPercent() / 100f)), MIN_WIDGET_WIDTH_DP, canvasWidth);
+    }
+
+    private int canvasWidthDp() {
+        return binding.previewCanvas.getWidth() > 0 ? pxToDp(binding.previewCanvas.getWidth()) : CANVAS_WIDTH_DP;
+    }
+
+    private int canvasHeightDp() {
+        return binding.previewCanvas.getHeight() > 0 ? pxToDp(binding.previewCanvas.getHeight()) : CANVAS_HEIGHT_DP;
+    }
+
+    private void assignDefaultPositions(List<UiComponent> items) {
+        for (int i = 0; i < items.size(); i++) {
+            UiComponent component = items.get(i);
+            component.setXdp(12);
+            component.setYdp(16 + (i * 96));
         }
     }
 
@@ -429,30 +721,6 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         empty.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_stage_shell));
         empty.setPadding(dp(12), dp(32), dp(12), dp(32));
         return empty;
-    }
-
-    private View createDropIndicator() {
-        View indicator = new View(this);
-        indicator.setBackgroundResource(R.drawable.bg_drop_indicator);
-        return indicator;
-    }
-
-    private LinearLayout.LayoutParams dropIndicatorLayoutParams() {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(6));
-        params.topMargin = dp(14);
-        return params;
-    }
-
-    private boolean startExistingComponentDrag(View source, int index) {
-        if (index < 0 || index >= components.size()) {
-            return false;
-        }
-        selectedIndex = index;
-        layerAdapter.setSelectedPosition(selectedIndex);
-        bindInspector();
-        return startDrag(source, new DragPayload(null, index));
     }
 
     private boolean startDrag(View source, DragPayload payload) {
@@ -469,15 +737,17 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         DragPayload payload = (DragPayload) state;
         switch (event.getAction()) {
             case DragEvent.ACTION_DRAG_STARTED:
-                dragInProgress = true;
-                dragTargetIndex = components.isEmpty() ? 0 : components.size();
-                renderPreview();
-                return true;
+                dragInProgress = payload.isPaletteDrag();
+                if (dragInProgress) {
+                    renderPreview();
+                }
+                return dragInProgress;
             case DragEvent.ACTION_DRAG_LOCATION:
-                updateDragTarget(resolveDropIndex(event.getY()));
                 return true;
             case DragEvent.ACTION_DROP:
-                applyDrop(payload, resolveDropIndex(event.getY()));
+                if (payload.isPaletteDrag()) {
+                    addPaletteComponentAt(payload.type, canvasEventX(view, event), canvasEventY(view, event));
+                }
                 return true;
             case DragEvent.ACTION_DRAG_ENDED:
                 dragInProgress = false;
@@ -489,48 +759,26 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         }
     }
 
-    private void updateDragTarget(int targetIndex) {
-        int normalized = clamp(targetIndex, 0, components.size());
-        if (normalized != dragTargetIndex) {
-            dragTargetIndex = normalized;
-            renderPreview();
+    private float canvasEventX(View eventView, DragEvent event) {
+        if (eventView == binding.previewCanvas) {
+            return event.getX();
         }
+        int[] canvasLocation = new int[2];
+        int[] viewLocation = new int[2];
+        binding.previewCanvas.getLocationOnScreen(canvasLocation);
+        eventView.getLocationOnScreen(viewLocation);
+        return event.getX() + viewLocation[0] - canvasLocation[0];
     }
 
-    private int resolveDropIndex(float y) {
-        int index = 0;
-        for (int i = 0; i < binding.previewCanvas.getChildCount(); i++) {
-            View child = binding.previewCanvas.getChildAt(i);
-            Object tag = child.getTag();
-            if (!(tag instanceof Integer)) {
-                continue;
-            }
-            float midpoint = child.getTop() + (child.getHeight() / 2f);
-            if (y < midpoint) {
-                return index;
-            }
-            index++;
+    private float canvasEventY(View eventView, DragEvent event) {
+        if (eventView == binding.previewCanvas) {
+            return event.getY();
         }
-        return index;
-    }
-
-    private void applyDrop(DragPayload payload, int targetIndex) {
-        int clamped = clamp(targetIndex, 0, components.size());
-        if (payload.isPaletteDrag()) {
-            components.add(clamped, UiComponent.createDefault(payload.type));
-            selectedIndex = clamped;
-            return;
-        }
-        if (payload.sourceIndex < 0 || payload.sourceIndex >= components.size()) {
-            return;
-        }
-        UiComponent moved = components.remove(payload.sourceIndex);
-        if (clamped > payload.sourceIndex) {
-            clamped--;
-        }
-        clamped = clamp(clamped, 0, components.size());
-        components.add(clamped, moved);
-        selectedIndex = clamped;
+        int[] canvasLocation = new int[2];
+        int[] viewLocation = new int[2];
+        binding.previewCanvas.getLocationOnScreen(canvasLocation);
+        eventView.getLocationOnScreen(viewLocation);
+        return event.getY() + viewLocation[1] - canvasLocation[1];
     }
 
     private View createPreviewView(UiComponent component, boolean selected) {
@@ -844,6 +1092,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         } else if (selectedIndex >= components.size()) {
             selectedIndex = components.size() - 1;
         }
+        resizeHandlesVisible = false;
         refreshAll();
     }
 
@@ -1030,8 +1279,11 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             item.put("cornerRadiusDp", component.getCornerRadiusDp());
             item.put("alignment", component.getAlignment());
             item.put("widthPercent", component.getWidthPercent());
+            item.put("widthDp", component.getWidthDp());
             item.put("heightDp", component.getHeightDp());
             item.put("textSizeSp", component.getTextSizeSp());
+            item.put("xDp", component.getXdp());
+            item.put("yDp", component.getYdp());
             items.put(item);
         }
         root.put("components", items);
@@ -1057,13 +1309,22 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         item.optInt("cornerRadiusDp", 18),
                         item.optString("alignment", "start"));
                 component.setWidthPercent(item.optInt("widthPercent", 100));
+                component.setWidthDp(item.optInt("widthDp", 0));
                 component.setHeightDp(item.optInt("heightDp", component.getHeightDp()));
                 component.setTextSizeSp(item.optInt("textSizeSp", component.getTextSizeSp()));
+                if (item.has("xDp") || item.has("yDp")) {
+                    component.setXdp(item.optInt("xDp", 12));
+                    component.setYdp(item.optInt("yDp", 16));
+                } else {
+                    component.setXdp(12);
+                    component.setYdp(16 + (i * 96));
+                }
                 components.add(component);
             }
         }
         binding.projectNameInput.setText(root.optString("projectName", "Untitled Flow"));
         selectedIndex = components.isEmpty() ? -1 : 0;
+        resizeHandlesVisible = false;
         refreshAll();
     }
 
@@ -1147,6 +1408,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     @Override
     public void onSelect(int position) {
         selectedIndex = position;
+        resizeHandlesVisible = false;
         refreshAll();
     }
 
@@ -1181,6 +1443,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 TypedValue.COMPLEX_UNIT_DIP,
                 value,
                 getResources().getDisplayMetrics()));
+    }
+
+    private int pxToDp(float value) {
+        return Math.round(value / getResources().getDisplayMetrics().density);
     }
 
     private int adjustAlpha(int color, float factor) {

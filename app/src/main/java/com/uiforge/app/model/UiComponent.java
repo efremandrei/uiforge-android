@@ -14,8 +14,11 @@ public class UiComponent implements Serializable {
     private int cornerRadiusDp;
     private String alignment;
     private int widthPercent = 100;
+    private int widthDp = 0;
     private int heightDp = 0;
     private int textSizeSp = 16;
+    private int xDp = 12;
+    private int yDp = 16;
 
     public UiComponent(UiComponentType type, String title, String helper, String backgroundColorName,
                        String accentColorName, boolean fullWidth, boolean emphasized, int paddingDp,
@@ -206,6 +209,15 @@ public class UiComponent implements Serializable {
 
     public void setWidthPercent(int widthPercent) {
         this.widthPercent = Math.max(30, Math.min(100, widthPercent));
+        this.widthDp = 0;
+    }
+
+    public int getWidthDp() {
+        return widthDp;
+    }
+
+    public void setWidthDp(int widthDp) {
+        this.widthDp = Math.max(0, widthDp);
     }
 
     public int getHeightDp() {
@@ -222,6 +234,22 @@ public class UiComponent implements Serializable {
 
     public void setTextSizeSp(int textSizeSp) {
         this.textSizeSp = Math.max(10, Math.min(32, textSizeSp));
+    }
+
+    public int getXdp() {
+        return xDp;
+    }
+
+    public void setXdp(int xDp) {
+        this.xDp = Math.max(0, xDp);
+    }
+
+    public int getYdp() {
+        return yDp;
+    }
+
+    public void setYdp(int yDp) {
+        this.yDp = Math.max(0, yDp);
     }
 
     public String getSummary() {

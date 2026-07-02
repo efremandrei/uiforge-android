@@ -442,13 +442,13 @@
                                 android:background="@drawable/bg_notch"
                                 android:orientation="vertical" />
 
-                            <LinearLayout
+                            <FrameLayout
                                 android:id="@+id/previewCanvas"
                                 android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
+                                android:layout_height="520dp"
                                 android:layout_marginTop="14dp"
-                                android:minHeight="160dp"
-                                android:orientation="vertical" />
+                                android:clipChildren="false"
+                                android:clipToPadding="false" />
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
