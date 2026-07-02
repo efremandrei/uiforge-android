@@ -426,12 +426,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         preview.setOnDragListener(this::handlePreviewCanvasDrag);
         installCanvasTouch(preview, index);
         installCanvasTouch(container, index);
-        int previewHeight = component.getHeightDp() == 0
-                ? FrameLayout.LayoutParams.WRAP_CONTENT
-                : FrameLayout.LayoutParams.MATCH_PARENT;
         container.addView(preview, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                previewHeight));
+                FrameLayout.LayoutParams.MATCH_PARENT));
         if (index == selectedIndex && resizeHandlesVisible) {
             addResizeHandles(container, index);
         }
@@ -445,7 +442,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private FrameLayout.LayoutParams canvasItemLayoutParams(UiComponent component) {
-        int height = component.getHeightDp() == 0 ? FrameLayout.LayoutParams.WRAP_CONTENT : dp(component.getHeightDp());
+        int height = dp(resolveComponentHeightDp(component));
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(dp(resolveComponentWidthDp(component)), height);
         params.leftMargin = dp(component.getXdp());
         params.topMargin = dp(component.getYdp());
@@ -484,7 +481,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                             if (selectedIndex == index) {
                                 longPressed = true;
                                 resizeHandlesVisible = true;
-                                refreshAll();
+                                showResizeHandles(touchedView, index);
                             }
                         };
                         touchedView.postDelayed(longPressAction, ViewConfiguration.getLongPressTimeout());
@@ -498,6 +495,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                                 touchedView.removeCallbacks(longPressAction);
                             }
                             resizeHandlesVisible = false;
+                            if (component.isFullWidth()) {
+                                component.setWidthDp(defaultFreeWidthDp(component));
+                                component.setFullWidth(false);
+                            }
                             component.setXdp(startXdp + pxToDp(dx));
                             component.setYdp(startYdp + pxToDp(dy));
                             clampComponentToCanvas(component);
@@ -539,6 +540,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private void addResizeHandle(FrameLayout container, int index, String direction, int gravity) {
         View handle = new View(this);
+        handle.setTag("resize_handle");
         handle.setBackgroundResource(R.drawable.bg_resize_handle);
         handle.setOnTouchListener(resizeHandleTouchListener(index, direction));
         int size = dp(16);
@@ -585,9 +587,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         startXdp = component.getXdp();
                         startYdp = component.getYdp();
                         startWidthDp = Math.max(MIN_WIDGET_WIDTH_DP, resolveComponentWidthDp(component));
-                        startHeightDp = Math.max(MIN_WIDGET_HEIGHT_DP, component.getHeightDp() > 0
-                                ? component.getHeightDp()
-                                : container == null ? MIN_WIDGET_HEIGHT_DP : pxToDp(container.getHeight()));
+                        startHeightDp = resolveComponentHeightDp(component);
                         return true;
                     case MotionEvent.ACTION_MOVE:
                         int dx = pxToDp(event.getRawX() - downRawX);
@@ -660,8 +660,30 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         container.setLayoutParams(params);
     }
 
+    private void showResizeHandles(View touchedView, int index) {
+        View container = findCanvasContainer(touchedView);
+        if (!(container instanceof FrameLayout)) {
+            refreshAll();
+            return;
+        }
+        removeResizeHandles((FrameLayout) container);
+        addResizeHandles((FrameLayout) container, index);
+    }
+
+    private void removeResizeHandles(FrameLayout container) {
+        for (int i = container.getChildCount() - 1; i >= 0; i--) {
+            View child = container.getChildAt(i);
+            Object tag = child.getTag();
+            if ("resize_handle".equals(tag)) {
+                container.removeViewAt(i);
+            }
+        }
+    }
+
     private void addPaletteComponentAt(UiComponentType type, float dropX, float dropY) {
         UiComponent component = UiComponent.createDefault(type);
+        component.setFullWidth(false);
+        component.setWidthDp(defaultFreeWidthDp(component));
         component.setXdp(pxToDp(dropX) - 24);
         component.setYdp(pxToDp(dropY) - 24);
         clampComponentToCanvas(component);
@@ -672,7 +694,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private void clampComponentToCanvas(UiComponent component) {
         int width = resolveComponentWidthDp(component);
-        int height = component.getHeightDp() > 0 ? component.getHeightDp() : MIN_WIDGET_HEIGHT_DP;
+        int height = resolveComponentHeightDp(component);
         int maxX = Math.max(0, canvasWidthDp() - width);
         int maxY = Math.max(0, canvasHeightDp() - height);
         component.setXdp(clamp(component.getXdp(), 0, maxX));
@@ -694,6 +716,41 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             return Math.max(MIN_WIDGET_WIDTH_DP, canvasWidth - component.getXdp());
         }
         return clamp(Math.round(canvasWidth * (component.getWidthPercent() / 100f)), MIN_WIDGET_WIDTH_DP, canvasWidth);
+    }
+
+    private int defaultFreeWidthDp(UiComponent component) {
+        int canvasWidth = canvasWidthDp();
+        switch (component.getType()) {
+            case BUTTON:
+            case DROPDOWN:
+            case INPUT:
+                return clamp(180, MIN_WIDGET_WIDTH_DP, canvasWidth);
+            case CHECKBOX:
+            case SWITCH:
+            case DIVIDER:
+            case PROGRESS:
+                return clamp(190, MIN_WIDGET_WIDTH_DP, canvasWidth);
+            default:
+                return clamp(210, MIN_WIDGET_WIDTH_DP, canvasWidth);
+        }
+    }
+
+    private int resolveComponentHeightDp(UiComponent component) {
+        if (component.getHeightDp() > 0) {
+            return clamp(component.getHeightDp(), MIN_WIDGET_HEIGHT_DP, canvasHeightDp());
+        }
+        switch (component.getType()) {
+            case HEADER:
+                return 120;
+            case TEXT:
+                return 92;
+            case INPUT:
+                return 74;
+            case CARD:
+                return 118;
+            default:
+                return 72;
+        }
     }
 
     private int canvasWidthDp() {
