@@ -519,7 +519,6 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             private int startYdp;
             private boolean moved;
             private boolean longPressed;
-            private boolean resizeBodyTouchIgnored;
             private Runnable longPressAction;
 
             @Override
@@ -532,15 +531,15 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
                         if (resizeHandlesVisible && selectedIndex == index) {
-                            resizeBodyTouchIgnored = true;
-                            logDebug("Touch down ignored because resize handles are active index=" + index);
-                            return true;
+                            clearResizeHandlesFromCanvas();
+                            resizeHandlesVisible = false;
+                            logDebug("Resize mode cleared by body drag index=" + index);
                         }
                         if (resizeHandlesVisible) {
                             clearResizeHandlesFromCanvas();
                             resizeHandlesVisible = false;
                         }
-                        resizeBodyTouchIgnored = false;
+                        requestCanvasParentsDoNotIntercept(touchedView, true);
                         downRawX = event.getRawX();
                         downRawY = event.getRawY();
                         startXdp = component.getXdp();
@@ -565,9 +564,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         touchedView.postDelayed(longPressAction, ViewConfiguration.getLongPressTimeout());
                         return true;
                     case MotionEvent.ACTION_MOVE:
-                        if (resizeBodyTouchIgnored) {
-                            return true;
-                        }
+                        requestCanvasParentsDoNotIntercept(touchedView, true);
                         float dx = event.getRawX() - downRawX;
                         float dy = event.getRawY() - downRawY;
                         if (!longPressed && (moved || Math.hypot(dx, dy) > touchSlop)) {
@@ -595,10 +592,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         return true;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
-                        if (resizeBodyTouchIgnored) {
-                            resizeBodyTouchIgnored = false;
-                            return true;
-                        }
+                        requestCanvasParentsDoNotIntercept(touchedView, false);
                         if (longPressAction != null) {
                             touchedView.removeCallbacks(longPressAction);
                         }
@@ -668,7 +662,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 View container = findCanvasContainer(handle);
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        handle.getParent().requestDisallowInterceptTouchEvent(true);
+                        requestCanvasParentsDoNotIntercept(handle, true);
                         selectedIndex = index;
                         resizeHandlesVisible = true;
                         downRawX = event.getRawX();
@@ -682,6 +676,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                                 + " widthDp=" + startWidthDp + " heightDp=" + startHeightDp);
                         return true;
                     case MotionEvent.ACTION_MOVE:
+                        requestCanvasParentsDoNotIntercept(handle, true);
                         int dx = pxToDp(event.getRawX() - downRawX);
                         int dy = pxToDp(event.getRawY() - downRawY);
                         int nextX = startXdp;
@@ -732,6 +727,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                         return true;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
+                        requestCanvasParentsDoNotIntercept(handle, false);
                         logDebug("Resize end index=" + index + " direction=" + direction
                                 + " xDp=" + component.getXdp() + " yDp=" + component.getYdp()
                                 + " widthDp=" + resolveComponentWidthDp(component)
@@ -760,6 +756,21 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             current = (View) current.getParent();
         }
         return view.getParent() == binding.previewCanvas ? view : null;
+    }
+
+    private void requestCanvasParentsDoNotIntercept(View source, boolean disallow) {
+        View current = source;
+        while (current != null && current.getParent() != null) {
+            current.getParent().requestDisallowInterceptTouchEvent(disallow);
+            if (current == binding.previewCanvas) {
+                break;
+            }
+            if (!(current.getParent() instanceof View)) {
+                break;
+            }
+            current = (View) current.getParent();
+        }
+        binding.previewCanvas.requestDisallowInterceptTouchEvent(disallow);
     }
 
     private void positionContainer(View container, UiComponent component) {
