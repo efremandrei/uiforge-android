@@ -14,7 +14,7 @@
     <string name="toolbar_help">Help</string>
     <string name="toolbar_about">About</string>
     <string name="dark_skin">Dark skin</string>
-    <string name="palette_title">Palette</string>
+    <string name="palette_title">UI Objects</string>
     <string name="palette_subtitle">Long-press a block, drag it onto the phone, and drop it where the screen should place it.</string>
     <string name="add_header">Header</string>
     <string name="add_text">Text</string>
@@ -28,7 +28,7 @@
     <string name="add_switch">Switch</string>
     <string name="add_divider">Divider</string>
     <string name="add_progress">Progress</string>
-    <string name="templates_title">Starter Flows</string>
+    <string name="templates_title">Templates</string>
     <string name="template_commerce">Commerce</string>
     <string name="template_profile">Profile</string>
     <string name="template_onboarding">Onboarding</string>
