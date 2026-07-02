@@ -5,6 +5,8 @@ import android.content.ClipboardManager;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.ContentUris;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -85,6 +87,8 @@ import java.util.concurrent.Executors;
 public class MainActivity extends AppCompatActivity implements LayerAdapter.LayerActionListener {
     private static final String LOG_TAG = "UIForge";
     private static final String FILE_LOG_NAME = "uidesignerFailLog.txt";
+    private static final String FILE_LOG_PREFS = "uiforge_file_log";
+    private static final String FILE_LOG_URI_PREF = "downloads_log_uri";
     private static final String STATE_PROJECT_NAME = "project_name";
     private static final String STATE_COMPONENTS = "components";
     private static final String STATE_SELECTION = "selection";
@@ -107,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private int selectedIndex = -1;
     private int dragTargetIndex = -1;
     private long lastMoveFileLogAtMs;
+    private Uri cachedDownloadsLogUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -1655,7 +1660,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private void appendToDownloadsLog(String line) throws IOException {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            Uri logUri = findOrCreateDownloadsLogUri();
+            Uri logUri = getDownloadsLogUri();
             try (OutputStream stream = getContentResolver().openOutputStream(logUri, "wa")) {
                 if (stream == null) {
                     throw new IOException("Could not open MediaStore output stream");
@@ -1674,27 +1679,77 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    private Uri findOrCreateDownloadsLogUri() throws IOException {
+    private Uri getDownloadsLogUri() throws IOException {
+        if (cachedDownloadsLogUri != null && canAppendToUri(cachedDownloadsLogUri)) {
+            return cachedDownloadsLogUri;
+        }
+        SharedPreferences preferences = getSharedPreferences(FILE_LOG_PREFS, Context.MODE_PRIVATE);
+        String savedUri = preferences.getString(FILE_LOG_URI_PREF, "");
+        if (savedUri != null && !savedUri.isEmpty()) {
+            Uri parsed = Uri.parse(savedUri);
+            if (canAppendToUri(parsed)) {
+                cachedDownloadsLogUri = parsed;
+                return parsed;
+            }
+            preferences.edit().remove(FILE_LOG_URI_PREF).apply();
+        }
+        Uri found = findExistingDownloadsLogUri();
+        if (found != null) {
+            cachedDownloadsLogUri = found;
+            preferences.edit().putString(FILE_LOG_URI_PREF, found.toString()).apply();
+            return found;
+        }
+        Uri created = createDownloadsLogUri();
+        cachedDownloadsLogUri = created;
+        preferences.edit().putString(FILE_LOG_URI_PREF, created.toString()).apply();
+        return created;
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private Uri findExistingDownloadsLogUri() {
         ContentResolver resolver = getContentResolver();
         Uri collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
         String[] projection = new String[]{MediaStore.Downloads._ID};
-        String selection = MediaStore.Downloads.DISPLAY_NAME + "=?";
-        String[] selectionArgs = new String[]{FILE_LOG_NAME};
-        try (Cursor cursor = resolver.query(collection, projection, selection, selectionArgs, null)) {
+        String selection = MediaStore.Downloads.DISPLAY_NAME + "=? AND ("
+                + MediaStore.Downloads.RELATIVE_PATH + "=? OR "
+                + MediaStore.Downloads.RELATIVE_PATH + "=?)";
+        String[] selectionArgs = new String[]{
+                FILE_LOG_NAME,
+                Environment.DIRECTORY_DOWNLOADS + "/",
+                Environment.DIRECTORY_DOWNLOADS
+        };
+        String sortOrder = MediaStore.Downloads.DATE_MODIFIED + " DESC";
+        try (Cursor cursor = resolver.query(collection, projection, selection, selectionArgs, sortOrder)) {
             if (cursor != null && cursor.moveToFirst()) {
                 long id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID));
-                return Uri.withAppendedPath(collection, String.valueOf(id));
+                return ContentUris.withAppendedId(collection, id);
             }
         }
+        return null;
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private Uri createDownloadsLogUri() throws IOException {
+        ContentResolver resolver = getContentResolver();
+        Uri collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
         ContentValues values = new ContentValues();
         values.put(MediaStore.Downloads.DISPLAY_NAME, FILE_LOG_NAME);
         values.put(MediaStore.Downloads.MIME_TYPE, "text/plain");
-        values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+        values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/");
         Uri created = resolver.insert(collection, values);
         if (created == null) {
             throw new IOException("Could not create Downloads log file");
         }
         return created;
+    }
+
+    private boolean canAppendToUri(Uri uri) {
+        try (OutputStream stream = getContentResolver().openOutputStream(uri, "wa")) {
+            return stream != null;
+        } catch (IOException | SecurityException e) {
+            Log.w(LOG_TAG, "Saved Downloads log URI is not writable: " + uri, e);
+            return false;
+        }
     }
 
     private int adjustAlpha(int color, float factor) {
