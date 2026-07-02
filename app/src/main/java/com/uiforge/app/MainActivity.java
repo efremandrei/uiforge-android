@@ -211,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void setupToolbar() {
-        binding.toolbar.setTitle(getString(R.string.app_name));
+        binding.toolbar.setTitle(null);
         binding.toolbar.setSubtitle(null);
         binding.toolbar.getMenu().add(Menu.NONE, MENU_HELP, Menu.NONE, R.string.toolbar_help)
                 .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER);

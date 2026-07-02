@@ -16,12 +16,23 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="76dp"
         android:background="@color/surface_base"
         android:elevation="0dp"
         android:paddingHorizontal="8dp"
         app:titleTextColor="@color/text_strong"
-        app:subtitleTextColor="@color/text_soft" />
+        app:subtitleTextColor="@color/text_soft">
+
+        <ImageView
+            android:id="@+id/appBanner"
+            android:layout_width="240dp"
+            android:layout_height="58dp"
+            android:layout_gravity="start|center_vertical"
+            android:adjustViewBounds="true"
+            android:contentDescription="@string/app_banner_description"
+            android:scaleType="fitStart"
+            android:src="@drawable/uiforge_banner" />
+    </com.google.android.material.appbar.MaterialToolbar>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"

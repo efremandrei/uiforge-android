@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">UI Forge</string>
+    <string name="app_banner_description">UI Forge banner</string>
     <string name="toolbar_subtitle"></string>
     <string name="hero_title">Shape app screens directly on Android</string>
     <string name="hero_subtitle">Build a concept quickly with reusable blocks, live preview, editable layers, and a portable JSON spec. No backend involved.</string>
