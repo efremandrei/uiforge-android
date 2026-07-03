@@ -325,6 +325,14 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void configurePaletteButton(MaterialButton button, UiComponentType type) {
+        button.setMinWidth(dp(92));
+        button.setMinHeight(dp(48));
+        button.setTextColor(ContextCompat.getColor(this, R.color.accent_cobalt));
+        button.setStrokeWidth(dp(2));
+        button.setStrokeColor(android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, R.color.accent_cobalt)));
+        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, R.color.surface_primary)));
+        button.setInsetTop(0);
+        button.setInsetBottom(0);
         button.setOnClickListener(v -> Toast.makeText(this, R.string.drag_palette_toast, Toast.LENGTH_SHORT).show());
         button.setOnLongClickListener(v -> startDrag(v, new DragPayload(type, -1)));
     }

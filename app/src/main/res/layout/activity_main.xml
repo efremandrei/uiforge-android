@@ -16,22 +16,22 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="104dp"
+        android:layout_height="86dp"
         android:background="@color/surface_base"
         android:elevation="0dp"
-        android:paddingHorizontal="10dp"
+        android:paddingHorizontal="8dp"
         app:titleTextColor="@color/text_strong"
         app:subtitleTextColor="@color/text_soft">
 
         <ImageView
             android:id="@+id/appBanner"
             android:layout_width="match_parent"
-            android:layout_height="86dp"
+            android:layout_height="70dp"
             android:layout_gravity="start|center_vertical"
-            android:layout_marginEnd="48dp"
+            android:layout_marginEnd="42dp"
             android:adjustViewBounds="true"
             android:contentDescription="@string/app_banner_description"
-            android:scaleType="fitCenter"
+            android:scaleType="centerCrop"
             android:src="@drawable/uiforge_banner" />
     </com.google.android.material.appbar.MaterialToolbar>
 
@@ -59,7 +59,7 @@
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_hero_panel"
                     android:orientation="vertical"
-                    android:padding="20dp">
+                    android:padding="16dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -73,7 +73,7 @@
                             android:layout_weight="1"
                             android:text="@string/hero_title"
                             android:textColor="@color/text_on_dark"
-                            android:textSize="28sp"
+                            android:textSize="23sp"
                             android:textStyle="bold" />
 
                         <com.google.android.material.button.MaterialButton
@@ -92,7 +92,7 @@
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="18dp"
+                        android:layout_marginTop="12dp"
                         android:hint="@string/project_name"
                         app:boxBackgroundColor="@color/hero_input"
                         app:boxCornerRadiusBottomEnd="20dp"
@@ -105,7 +105,9 @@
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/projectNameInput"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
+                            android:layout_height="52dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
                             android:textColor="@color/text_on_dark"
                             android:textColorHint="@color/text_on_dark_soft" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -114,14 +116,14 @@
                         android:id="@+id/darkSkinSwitch"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
+                        android:layout_marginTop="8dp"
                         android:text="@string/dark_skin"
                         android:textColor="@color/text_on_dark" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="10dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -169,12 +171,13 @@
                             android:text="@string/export_json"
                             android:singleLine="true"
                             android:textSize="12sp"
+                            android:textColor="@color/text_on_dark"
                             app:backgroundTint="@color/accent_gold"
                             app:cornerRadius="20dp"
                             app:icon="@android:drawable/ic_menu_share"
                             app:iconGravity="textTop"
                             app:iconPadding="2dp"
-                            app:iconTint="@color/text_strong" />
+                            app:iconTint="@color/text_on_dark" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -211,6 +214,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
+                android:fadingEdgeLength="28dp"
+                android:requiresFadingEdge="horizontal"
                 android:scrollbars="none">
 
                 <LinearLayout
@@ -359,26 +364,30 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:orientation="horizontal">
+                android:orientation="vertical">
 
                 <com.google.android.material.textfield.TextInputLayout
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="@string/preset_dropdown">
+                    android:hint="@string/preset_dropdown"
+                    app:boxStrokeColor="@color/accent_cobalt"
+                    app:endIconTint="@color/accent_cobalt"
+                    app:hintTextColor="@color/accent_cobalt">
 
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView
                         android:id="@+id/presetDropdownInput"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content" />
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_strong"
+                        android:textColorHint="@color/text_soft" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/startNewDesignButton"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="56dp"
-                    android:layout_marginStart="10dp"
+                    android:layout_marginTop="10dp"
                     android:text="@string/start_new_design"
                     app:backgroundTint="@color/accent_mint"
                     app:cornerRadius="18dp" />
