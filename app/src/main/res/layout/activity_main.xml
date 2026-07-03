@@ -604,12 +604,17 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
-                        android:hint="@string/component_title">
+                        android:hint="@string/component_title"
+                        app:boxBackgroundColor="@color/surface_primary"
+                        app:boxStrokeColor="@color/stroke_soft"
+                        app:hintTextColor="@color/text_soft">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/componentTitleInput"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_strong"
+                            android:textColorHint="@color/text_soft" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -617,12 +622,17 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/supporting_text">
+                        android:hint="@string/supporting_text"
+                        app:boxBackgroundColor="@color/surface_primary"
+                        app:boxStrokeColor="@color/stroke_soft"
+                        app:hintTextColor="@color/text_soft">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/componentHelperInput"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_strong"
+                            android:textColorHint="@color/text_soft" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -630,12 +640,18 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/background_color">
+                        android:hint="@string/background_color"
+                        app:boxBackgroundColor="@color/surface_primary"
+                        app:boxStrokeColor="@color/stroke_soft"
+                        app:endIconTint="@color/text_soft"
+                        app:hintTextColor="@color/text_soft">
 
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
                             android:id="@+id/backgroundColorInput"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_strong"
+                            android:textColorHint="@color/text_soft" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
@@ -643,12 +659,18 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:hint="@string/accent_color">
+                        android:hint="@string/accent_color"
+                        app:boxBackgroundColor="@color/surface_primary"
+                        app:boxStrokeColor="@color/stroke_soft"
+                        app:endIconTint="@color/text_soft"
+                        app:hintTextColor="@color/text_soft">
 
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
                             android:id="@+id/accentColorInput"
                             android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_strong"
+                            android:textColorHint="@color/text_soft" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.switchmaterial.SwitchMaterial
@@ -656,13 +678,15 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:text="@string/full_width" />
+                        android:text="@string/full_width"
+                        android:textColor="@color/text_strong" />
 
                     <com.google.android.material.switchmaterial.SwitchMaterial
                         android:id="@+id/emphasisSwitch"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/emphasized_style" />
+                        android:text="@string/emphasized_style"
+                        android:textColor="@color/text_strong" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -683,7 +707,10 @@
                         android:id="@+id/widthSeekBar"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:max="70" />
+                        android:max="70"
+                        android:progressBackgroundTint="@color/stroke_soft"
+                        android:progressTint="@color/accent_cobalt"
+                        android:thumbTint="@color/accent_cobalt" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -704,7 +731,10 @@
                         android:id="@+id/heightSeekBar"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:max="180" />
+                        android:max="180"
+                        android:progressBackgroundTint="@color/stroke_soft"
+                        android:progressTint="@color/accent_cobalt"
+                        android:thumbTint="@color/accent_cobalt" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -725,7 +755,10 @@
                         android:id="@+id/textSizeSeekBar"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:max="22" />
+                        android:max="22"
+                        android:progressBackgroundTint="@color/stroke_soft"
+                        android:progressTint="@color/accent_cobalt"
+                        android:thumbTint="@color/accent_cobalt" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -746,7 +779,10 @@
                         android:id="@+id/paddingSeekBar"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:max="32" />
+                        android:max="32"
+                        android:progressBackgroundTint="@color/stroke_soft"
+                        android:progressTint="@color/accent_cobalt"
+                        android:thumbTint="@color/accent_cobalt" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -767,7 +803,10 @@
                         android:id="@+id/radiusSeekBar"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:max="28" />
+                        android:max="28"
+                        android:progressBackgroundTint="@color/stroke_soft"
+                        android:progressTint="@color/accent_cobalt"
+                        android:thumbTint="@color/accent_cobalt" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -789,21 +828,27 @@
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/align_start" />
+                            android:text="@string/align_start"
+                            android:textColor="@color/text_strong"
+                            app:strokeColor="@color/stroke_soft" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/alignCenterButton"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/align_center" />
+                            android:text="@string/align_center"
+                            android:textColor="@color/text_strong"
+                            app:strokeColor="@color/stroke_soft" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/alignEndButton"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/align_end" />
+                            android:text="@string/align_end"
+                            android:textColor="@color/text_strong"
+                            app:strokeColor="@color/stroke_soft" />
                     </com.google.android.material.button.MaterialButtonToggleGroup>
 
                     <com.google.android.material.button.MaterialButton
