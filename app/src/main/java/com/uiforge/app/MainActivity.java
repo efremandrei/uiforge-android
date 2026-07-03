@@ -6,6 +6,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.ContentUris;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
@@ -19,7 +20,12 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.text.Editable;
 import android.text.InputType;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.TextWatcher;
+import android.text.TextPaint;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.DragEvent;
@@ -1703,14 +1709,66 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void showAboutDialog() {
-        LinearLayout content = dialogColumn();
-        content.addView(dialogText(getString(R.string.about_creator)));
-        content.addView(dialogText(getString(R.string.about_version, getAppVersionName())));
-        new MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.about_title)
-                .setView(content)
-                .setPositiveButton(R.string.close_label, null)
-                .show();
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int paddingHorizontal = dp(28);
+        int paddingVertical = dp(26);
+        card.setPadding(paddingHorizontal, paddingVertical, paddingHorizontal, dp(18));
+
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(Color.parseColor("#13231F"));
+        background.setCornerRadius(dp(28));
+        background.setStroke(dp(1), Color.parseColor("#1E3A34"));
+        card.setBackground(background);
+
+        TextView title = aboutText(getString(R.string.about_title), 30, true);
+        card.addView(title);
+        addVerticalSpace(card, 56);
+        card.addView(aboutText(getString(R.string.about_developer), 19, false));
+        addVerticalSpace(card, 28);
+        card.addView(aboutText(
+                getString(R.string.about_version, getAppVersionName(), getAppVersionCode(), getBuildTypeName()),
+                19,
+                false));
+        addVerticalSpace(card, 28);
+        card.addView(aboutLinkText(
+                getString(R.string.about_email_label),
+                getString(R.string.about_email),
+                "mailto:" + getString(R.string.about_email)));
+        addVerticalSpace(card, 28);
+        card.addView(aboutLinkText(
+                getString(R.string.about_github_label),
+                getString(R.string.about_github_url),
+                getString(R.string.about_github_url)));
+        addVerticalSpace(card, 48);
+
+        MaterialButton closeButton = new MaterialButton(this, null, com.google.android.material.R.attr.borderlessButtonStyle);
+        closeButton.setText(getString(R.string.close_label).toUpperCase(Locale.US));
+        closeButton.setTextColor(Color.parseColor("#3FA35B"));
+        closeButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        closeButton.setAllCaps(false);
+        closeButton.setBackgroundColor(Color.TRANSPARENT);
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                dp(48));
+        closeParams.gravity = Gravity.END;
+        card.addView(closeButton, closeParams);
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(card)
+                .create();
+        closeButton.setOnClickListener(v -> dialog.dismiss());
+        dialog.setOnShowListener(dialogInterface -> {
+            Window window = dialog.getWindow();
+            if (window != null) {
+                window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                window.setDimAmount(0.62f);
+                window.setLayout(
+                        getResources().getDisplayMetrics().widthPixels - dp(36),
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+            }
+        });
+        dialog.show();
     }
 
     private String getAppVersionName() {
@@ -1725,6 +1783,77 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             logError("Could not read app version", e);
             return "unknown";
         }
+    }
+
+    private long getAppVersionCode() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                return getPackageManager()
+                        .getPackageInfo(getPackageName(), PackageManager.PackageInfoFlags.of(0))
+                        .getLongVersionCode();
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
+            }
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+        } catch (PackageManager.NameNotFoundException e) {
+            logError("Could not read app version code", e);
+            return 0;
+        }
+    }
+
+    private String getBuildTypeName() {
+        return getString(R.string.about_build_debug);
+    }
+
+    private TextView aboutText(String text, int sizeSp, boolean bold) {
+        TextView textView = new TextView(this);
+        textView.setText(text);
+        textView.setTextColor(Color.WHITE);
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp);
+        textView.setLineSpacing(dp(3), 1.0f);
+        if (bold) {
+            textView.setTypeface(Typeface.DEFAULT_BOLD);
+        }
+        return textView;
+    }
+
+    private TextView aboutLinkText(String label, String value, String uri) {
+        TextView textView = aboutText(label + value, 19, false);
+        int start = label.length();
+        SpannableString text = new SpannableString(label + value);
+        text.setSpan(new ClickableSpan() {
+            @Override
+            public void onClick(View widget) {
+                openExternalUri(uri);
+            }
+
+            @Override
+            public void updateDrawState(TextPaint ds) {
+                super.updateDrawState(ds);
+                ds.setColor(Color.parseColor("#C76542"));
+                ds.setUnderlineText(true);
+            }
+        }, start, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        textView.setText(text);
+        textView.setMovementMethod(LinkMovementMethod.getInstance());
+        textView.setHighlightColor(Color.TRANSPARENT);
+        return textView;
+    }
+
+    private void openExternalUri(String uri) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(uri)));
+        } catch (RuntimeException e) {
+            logError("Could not open external URI " + uri, e);
+        }
+    }
+
+    private void addVerticalSpace(LinearLayout parent, int heightDp) {
+        Space space = new Space(this);
+        parent.addView(space, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(heightDp)));
     }
 
     private LinearLayout dialogColumn() {
