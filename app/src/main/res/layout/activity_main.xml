@@ -371,7 +371,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/preset_dropdown"
+                    app:boxBackgroundColor="@color/surface_primary"
                     app:boxStrokeColor="@color/accent_cobalt"
+                    app:boxStrokeWidth="2dp"
+                    app:boxStrokeWidthFocused="2dp"
                     app:endIconTint="@color/accent_cobalt"
                     app:hintTextColor="@color/accent_cobalt">
 
@@ -379,6 +382,7 @@
                         android:id="@+id/presetDropdownInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:popupBackground="@drawable/bg_dropdown_popup"
                         android:textColor="@color/text_strong"
                         android:textColorHint="@color/text_soft" />
                 </com.google.android.material.textfield.TextInputLayout>

@@ -331,8 +331,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 getString(R.string.template_fitness));
         binding.presetDropdownInput.setAdapter(new ArrayAdapter<>(
                 this,
-                android.R.layout.simple_list_item_1,
+                R.layout.item_dropdown,
                 presets));
+        binding.presetDropdownInput.setDropDownBackgroundDrawable(
+                ContextCompat.getDrawable(this, R.drawable.bg_dropdown_popup));
         binding.presetDropdownInput.setOnItemClickListener((parent, view, position, id) ->
                 applyPreset((String) parent.getItemAtPosition(position)));
         binding.startNewDesignButton.setOnClickListener(v -> startNewDesign());
@@ -377,10 +379,14 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void wireDropdowns() {
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
-                android.R.layout.simple_list_item_1,
+                R.layout.item_dropdown,
                 new ArrayList<>(palette.keySet()));
         binding.backgroundColorInput.setAdapter(adapter);
         binding.accentColorInput.setAdapter(adapter);
+        binding.backgroundColorInput.setDropDownBackgroundDrawable(
+                ContextCompat.getDrawable(this, R.drawable.bg_dropdown_popup));
+        binding.accentColorInput.setDropDownBackgroundDrawable(
+                ContextCompat.getDrawable(this, R.drawable.bg_dropdown_popup));
         binding.backgroundColorInput.setOnItemClickListener((parent, view, position, id) ->
                 updateSelected(component -> component.setBackgroundColorName((String) parent.getItemAtPosition(position))));
         binding.accentColorInput.setOnItemClickListener((parent, view, position, id) ->
