@@ -23,7 +23,6 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.DragEvent;
 import android.view.Gravity;
-import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -97,8 +96,6 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private static final String FILE_LOG_URI_PREF = "downloads_log_uri";
     private static final String SETTINGS_PREFS = "uiforge_settings";
     private static final String DARK_SKIN_PREF = "dark_skin";
-    private static final int MENU_HELP = 1001;
-    private static final int MENU_ABOUT = 1002;
     private static final String STATE_PROJECT_NAME = "project_name";
     private static final String STATE_COMPONENTS = "components";
     private static final String STATE_SELECTION = "selection";
@@ -213,21 +210,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void setupToolbar() {
         binding.toolbar.setTitle(null);
         binding.toolbar.setSubtitle(null);
-        binding.toolbar.getMenu().add(Menu.NONE, MENU_HELP, Menu.NONE, R.string.toolbar_help)
-                .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER);
-        binding.toolbar.getMenu().add(Menu.NONE, MENU_ABOUT, Menu.NONE, R.string.toolbar_about)
-                .setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER);
-        binding.toolbar.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == MENU_HELP) {
-                showHelpScreen();
-                return true;
-            }
-            if (item.getItemId() == MENU_ABOUT) {
-                showAboutDialog();
-                return true;
-            }
-            return false;
-        });
+        binding.bottomHelpButton.setOnClickListener(v -> showHelpScreen());
+        binding.bottomAboutButton.setOnClickListener(v -> showAboutDialog());
         binding.saveProjectButton.setOnClickListener(v -> showSaveProjectDialog());
         binding.loadProjectButton.setOnClickListener(v -> showLoadProjectDialog());
         binding.exportButton.setOnClickListener(v -> showExportDialog());

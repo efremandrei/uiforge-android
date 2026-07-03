@@ -16,19 +16,18 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="86dp"
+        android:layout_height="104dp"
         android:background="@color/surface_base"
         android:elevation="0dp"
-        android:paddingHorizontal="8dp"
+        android:padding="0dp"
         app:titleTextColor="@color/text_strong"
         app:subtitleTextColor="@color/text_soft">
 
         <ImageView
             android:id="@+id/appBanner"
             android:layout_width="match_parent"
-            android:layout_height="70dp"
+            android:layout_height="92dp"
             android:layout_gravity="start|center_vertical"
-            android:layout_marginEnd="42dp"
             android:adjustViewBounds="true"
             android:contentDescription="@string/app_banner_description"
             android:scaleType="centerCrop"
@@ -37,7 +36,8 @@
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:clipToPadding="false">
 
         <LinearLayout
@@ -815,4 +815,46 @@
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+        android:id="@+id/bottomActionBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_primary"
+        android:elevation="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/bottomHelpButton"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:text="@string/toolbar_help"
+            android:textColor="@color/text_on_dark"
+            app:backgroundTint="@color/accent_mint"
+            app:cornerRadius="18dp"
+            app:icon="@android:drawable/ic_menu_help"
+            app:iconGravity="textStart"
+            app:iconTint="@color/text_on_dark" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/bottomAboutButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:text="@string/toolbar_about"
+            android:textColor="@color/text_strong"
+            app:cornerRadius="18dp"
+            app:icon="@android:drawable/ic_dialog_info"
+            app:iconGravity="textStart"
+            app:iconTint="@color/text_strong"
+            app:strokeColor="@color/accent_cobalt"
+            app:strokeWidth="2dp" />
+    </LinearLayout>
 </LinearLayout>
