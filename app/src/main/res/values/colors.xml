@@ -8,9 +8,12 @@
     <color name="text_soft">#66717F</color>
     <color name="text_on_dark">#FFF8F1</color>
     <color name="text_on_dark_soft">#DCCEC0</color>
-    <color name="hero_input">#26415F</color>
-    <color name="hero_panel_start">#264653</color>
-    <color name="hero_panel_end">#0E1A27</color>
+    <color name="hero_text">#17202A</color>
+    <color name="hero_text_soft">#66717F</color>
+    <color name="hero_button_text">#17202A</color>
+    <color name="hero_input">#FFFFFF</color>
+    <color name="hero_panel_start">#FFFDFC</color>
+    <color name="hero_panel_end">#EAF4F6</color>
     <color name="accent_cobalt">#1E3A5F</color>
     <color name="accent_mint">#2A9D8F</color>
     <color name="accent_sunset">#E76F51</color>

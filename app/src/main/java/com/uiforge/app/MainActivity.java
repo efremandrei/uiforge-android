@@ -273,7 +273,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void configureHelpButton(MaterialButton button, boolean onDarkBackground) {
-        int color = ContextCompat.getColor(this, onDarkBackground ? R.color.text_on_dark : R.color.text_strong);
+        int color = ContextCompat.getColor(this, onDarkBackground ? R.color.hero_text : R.color.text_strong);
         GradientDrawable circle = new GradientDrawable();
         circle.setShape(GradientDrawable.OVAL);
         circle.setColor(Color.TRANSPARENT);

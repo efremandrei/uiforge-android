@@ -8,6 +8,9 @@
     <color name="text_soft">#A7BAC2</color>
     <color name="text_on_dark">#F7FDFF</color>
     <color name="text_on_dark_soft">#B8CED6</color>
+    <color name="hero_text">#F7FDFF</color>
+    <color name="hero_text_soft">#B8CED6</color>
+    <color name="hero_button_text">#F7FDFF</color>
     <color name="hero_input">#173544</color>
     <color name="hero_panel_start">#203844</color>
     <color name="hero_panel_end">#07131B</color>

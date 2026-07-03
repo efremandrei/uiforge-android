@@ -72,7 +72,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="@string/hero_title"
-                            android:textColor="@color/text_on_dark"
+                            android:textColor="@color/hero_text"
                             android:textSize="23sp"
                             android:textStyle="bold" />
 
@@ -84,7 +84,7 @@
                             android:minWidth="0dp"
                             android:padding="0dp"
                             android:text="@string/help_icon"
-                            android:textColor="@color/text_on_dark"
+                            android:textColor="@color/hero_text"
                             android:textSize="18sp" />
                     </LinearLayout>
 
@@ -99,8 +99,8 @@
                         app:boxCornerRadiusBottomStart="20dp"
                         app:boxCornerRadiusTopEnd="20dp"
                         app:boxCornerRadiusTopStart="20dp"
-                        app:boxStrokeColor="@color/text_on_dark_soft"
-                        app:hintTextColor="@color/text_on_dark_soft">
+                        app:boxStrokeColor="@color/hero_text_soft"
+                        app:hintTextColor="@color/hero_text_soft">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/projectNameInput"
@@ -108,8 +108,8 @@
                             android:layout_height="52dp"
                             android:paddingTop="8dp"
                             android:paddingBottom="8dp"
-                            android:textColor="@color/text_on_dark"
-                            android:textColorHint="@color/text_on_dark_soft" />
+                            android:textColor="@color/hero_text"
+                            android:textColorHint="@color/hero_text_soft" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.switchmaterial.SwitchMaterial
@@ -118,7 +118,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:text="@string/dark_skin"
-                        android:textColor="@color/text_on_dark" />
+                        android:textColor="@color/hero_text" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -136,12 +136,13 @@
                             android:text="@string/save_project"
                             android:singleLine="true"
                             android:textSize="12sp"
+                            android:textColor="@color/hero_button_text"
                             app:backgroundTint="@color/accent_mint"
                             app:cornerRadius="20dp"
                             app:icon="@android:drawable/ic_menu_save"
                             app:iconGravity="textTop"
                             app:iconPadding="2dp"
-                            app:iconTint="@color/text_on_dark" />
+                            app:iconTint="@color/hero_button_text" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/loadProjectButton"
@@ -153,13 +154,13 @@
                             android:text="@string/load_project"
                             android:singleLine="true"
                             android:textSize="12sp"
-                            android:textColor="@color/text_on_dark"
+                            android:textColor="@color/hero_text"
                             app:cornerRadius="20dp"
                             app:icon="@android:drawable/ic_menu_upload"
                             app:iconGravity="textTop"
                             app:iconPadding="2dp"
-                            app:iconTint="@color/text_on_dark"
-                            app:strokeColor="@color/text_on_dark_soft" />
+                            app:iconTint="@color/hero_text"
+                            app:strokeColor="@color/hero_text_soft" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/exportButton"
@@ -171,13 +172,13 @@
                             android:text="@string/export_json"
                             android:singleLine="true"
                             android:textSize="12sp"
-                            android:textColor="@color/text_on_dark"
+                            android:textColor="@color/hero_button_text"
                             app:backgroundTint="@color/accent_gold"
                             app:cornerRadius="20dp"
                             app:icon="@android:drawable/ic_menu_share"
                             app:iconGravity="textTop"
                             app:iconPadding="2dp"
-                            app:iconTint="@color/text_on_dark" />
+                            app:iconTint="@color/hero_button_text" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
