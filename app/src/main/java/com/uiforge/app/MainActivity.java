@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.ContentUris;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -138,6 +139,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         setupToolbar();
         setupLists();
         setupHelpButtons();
+        styleInspectorDrawer();
         setupDarkSkinSwitch();
         setupPaletteButtons();
         setupTemplateButtons();
@@ -285,6 +287,65 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         button.setInsetTop(0);
         button.setInsetBottom(0);
         button.setPadding(0, 0, 0, 0);
+    }
+
+    private void styleInspectorDrawer() {
+        int surface = ContextCompat.getColor(this, R.color.surface_primary);
+        int strong = ContextCompat.getColor(this, R.color.text_strong);
+        int soft = ContextCompat.getColor(this, R.color.text_soft);
+        int stroke = ContextCompat.getColor(this, R.color.stroke_soft);
+        int accent = ContextCompat.getColor(this, R.color.accent_cobalt);
+        int danger = ContextCompat.getColor(this, R.color.accent_sunset);
+        ColorStateList strongText = ColorStateList.valueOf(strong);
+        ColorStateList softText = ColorStateList.valueOf(soft);
+        ColorStateList fieldStroke = new ColorStateList(
+                new int[][]{
+                        new int[]{android.R.attr.state_focused},
+                        new int[]{-android.R.attr.state_enabled},
+                        new int[]{}},
+                new int[]{accent, stroke, stroke});
+
+        binding.inspectorDrawer.setCardBackgroundColor(surface);
+        binding.inspectorDrawer.setStrokeColor(stroke);
+        styleInspectorViewTree(binding.inspectorDrawer, strongText, softText, fieldStroke, surface);
+
+        binding.selectedTypeLabel.setTextColor(softText);
+        binding.widthValueLabel.setTextColor(softText);
+        binding.heightValueLabel.setTextColor(softText);
+        binding.textSizeValueLabel.setTextColor(softText);
+        binding.paddingValueLabel.setTextColor(softText);
+        binding.radiusValueLabel.setTextColor(softText);
+        binding.deleteButton.setTextColor(ColorStateList.valueOf(danger));
+        binding.deleteButton.setStrokeColor(ColorStateList.valueOf(danger));
+    }
+
+    private void styleInspectorViewTree(
+            View view,
+            ColorStateList strongText,
+            ColorStateList softText,
+            ColorStateList fieldStroke,
+            int surface) {
+        if (view instanceof TextInputLayout) {
+            TextInputLayout layout = (TextInputLayout) view;
+            layout.setBoxBackgroundColor(surface);
+            layout.setBoxStrokeColorStateList(fieldStroke);
+            layout.setDefaultHintTextColor(softText);
+            layout.setHintTextColor(softText);
+            layout.setEndIconTintList(fieldStroke);
+        }
+        if (view instanceof TextView) {
+            ((TextView) view).setTextColor(strongText);
+            ((TextView) view).setHintTextColor(softText);
+        }
+        if (view instanceof MaterialButton) {
+            ((MaterialButton) view).setIconTint(strongText);
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                styleInspectorViewTree(group.getChildAt(i), strongText, softText, fieldStroke, surface);
+            }
+        }
     }
 
     private void setupLists() {
