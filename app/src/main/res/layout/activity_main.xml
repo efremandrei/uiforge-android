@@ -194,6 +194,71 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:text="@string/templates_title"
+                    android:textColor="@color/text_strong"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/templatesHelpButton"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:minWidth="0dp"
+                    android:padding="0dp"
+                    android:text="@string/help_icon"
+                    android:textColor="@color/text_strong"
+                    android:textSize="18sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/preset_dropdown"
+                    app:boxBackgroundColor="@color/surface_primary"
+                    app:boxStrokeColor="@color/accent_cobalt"
+                    app:boxStrokeWidth="2dp"
+                    app:boxStrokeWidthFocused="2dp"
+                    app:endIconTint="@color/accent_cobalt"
+                    app:hintTextColor="@color/accent_cobalt">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/presetDropdownInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:popupBackground="@drawable/bg_dropdown_popup"
+                        android:textColor="@color/text_strong"
+                        android:textColorHint="@color/text_soft" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/startNewDesignButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/start_new_design"
+                    app:backgroundTint="@color/accent_mint"
+                    app:cornerRadius="18dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="@string/palette_title"
                     android:textColor="@color/text_strong"
                     android:textSize="18sp"
@@ -332,71 +397,6 @@
                         app:cornerRadius="18dp" />
                 </LinearLayout>
             </HorizontalScrollView>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/templates_title"
-                    android:textColor="@color/text_strong"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/templatesHelpButton"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:minWidth="0dp"
-                    android:padding="0dp"
-                    android:text="@string/help_icon"
-                    android:textColor="@color/text_strong"
-                    android:textSize="18sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="vertical">
-
-                <com.google.android.material.textfield.TextInputLayout
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/preset_dropdown"
-                    app:boxBackgroundColor="@color/surface_primary"
-                    app:boxStrokeColor="@color/accent_cobalt"
-                    app:boxStrokeWidth="2dp"
-                    app:boxStrokeWidthFocused="2dp"
-                    app:endIconTint="@color/accent_cobalt"
-                    app:hintTextColor="@color/accent_cobalt">
-
-                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                        android:id="@+id/presetDropdownInput"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:popupBackground="@drawable/bg_dropdown_popup"
-                        android:textColor="@color/text_strong"
-                        android:textColorHint="@color/text_soft" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/startNewDesignButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:layout_marginTop="10dp"
-                    android:text="@string/start_new_design"
-                    app:backgroundTint="@color/accent_mint"
-                    app:cornerRadius="18dp" />
-            </LinearLayout>
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
