@@ -1313,11 +1313,15 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         MaterialButton button = new MaterialButton(this);
         button.setText(component.getTitle());
         button.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
+        button.setGravity(Gravity.CENTER);
+        button.setAllCaps(false);
         button.setInsetTop(0);
         button.setInsetBottom(0);
+        button.setMinWidth(0);
+        button.setMinHeight(0);
+        button.setFocusable(false);
         button.setPadding(padding, padding, padding, padding);
-        button.setMinHeight(component.getHeightDp() == 0 ? dp(48) : dp(component.getHeightDp()));
-        button.setCornerRadius(component.getCornerRadiusDp() * 2);
+        button.setCornerRadius(radius);
         if (component.isEmphasized()) {
             button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(background));
             button.setTextColor(accent);
@@ -1325,7 +1329,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             button.setStrokeWidth(dp(1));
             button.setStrokeColor(android.content.res.ColorStateList.valueOf(accent));
             button.setTextColor(accent);
-            button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
+            button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(background));
         }
         if (selected) {
             button.setStrokeWidth(dp(2));
@@ -1339,6 +1343,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         AppCompatEditText editText = new AppCompatEditText(this);
         editText.setText(component.getHelper());
         editText.setFocusable(false);
+        editText.setClickable(false);
+        editText.setCursorVisible(false);
+        editText.setBackgroundColor(Color.TRANSPARENT);
         editText.setTextColor(accent);
         editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
         editText.setPadding(padding, padding, padding, padding);
@@ -1347,6 +1354,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         layout.setBoxCornerRadii(radius, radius, radius, radius);
         layout.setBoxBackgroundColor(background);
         layout.setBoxStrokeColor(selected ? ContextCompat.getColor(this, R.color.accent_cobalt) : accent);
+        layout.setBoxStrokeWidth(dp(selected ? 2 : 1));
+        layout.setFocusable(false);
         layout.addView(editText, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -1406,8 +1415,16 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private View createTabsPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
-        LinearLayout layout = shellLayout(background, radius, padding, selected);
+        LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.HORIZONTAL);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        layout.setPadding(dp(3), dp(3), dp(3), dp(3));
+        GradientDrawable controlBackground = new GradientDrawable();
+        controlBackground.setColor(background);
+        controlBackground.setCornerRadius(radius);
+        controlBackground.setStroke(dp(selected ? 2 : 1),
+                selected ? ContextCompat.getColor(this, R.color.accent_cobalt) : accent);
+        layout.setBackground(controlBackground);
         String[] rawTabs = component.getTitle().split(",");
         String activeTab = component.getHelper();
         for (String rawTab : rawTabs) {
@@ -1422,11 +1439,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             label.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
             label.setTypeface(active || component.isEmphasized() ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
             label.setTextColor(active ? background : accent);
+            label.setSingleLine(true);
             GradientDrawable tabBg = new GradientDrawable();
             tabBg.setCornerRadius(dp(Math.max(8, component.getCornerRadiusDp() - 4)));
             tabBg.setColor(active ? accent : Color.TRANSPARENT);
             label.setBackground(tabBg);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f);
             params.setMargins(dp(2), 0, dp(2), 0);
             layout.addView(label, params);
         }
@@ -1434,63 +1452,90 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private View createDropdownPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
-        LinearLayout layout = shellLayout(background, radius, padding, selected);
-        layout.setOrientation(LinearLayout.HORIZONTAL);
-        layout.setGravity(Gravity.CENTER_VERTICAL);
-        TextView label = new TextView(this);
-        label.setText(nonEmpty(component.getHelper(), component.getTitle()));
-        label.setTextColor(accent);
-        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
-        TextView arrow = new TextView(this);
-        arrow.setText("v");
-        arrow.setGravity(Gravity.CENTER);
-        arrow.setTextColor(accent);
-        arrow.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
-        layout.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        layout.addView(arrow, new LinearLayout.LayoutParams(dp(28), LinearLayout.LayoutParams.WRAP_CONTENT));
+        TextInputLayout layout = new TextInputLayout(this);
+        AppCompatEditText value = new AppCompatEditText(this);
+        value.setText(nonEmpty(component.getHelper(), component.getTitle()));
+        value.setFocusable(false);
+        value.setClickable(false);
+        value.setCursorVisible(false);
+        value.setBackgroundColor(Color.TRANSPARENT);
+        value.setTextColor(accent);
+        value.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
+        value.setPadding(padding, padding / 2, padding, padding / 2);
+        layout.setHint(component.getTitle());
+        layout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
+        layout.setBoxCornerRadii(radius, radius, radius, radius);
+        layout.setBoxBackgroundColor(background);
+        layout.setBoxStrokeColor(selected ? ContextCompat.getColor(this, R.color.accent_cobalt) : accent);
+        layout.setBoxStrokeWidth(dp(selected ? 2 : 1));
+        layout.setEndIconMode(TextInputLayout.END_ICON_DROPDOWN_MENU);
+        layout.setEndIconTintList(ColorStateList.valueOf(accent));
+        layout.addView(value, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
         return layout;
     }
 
     private View createCheckboxPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
-        LinearLayout layout = shellLayout(background, radius, padding, selected);
-        layout.setGravity(Gravity.CENTER_VERTICAL);
+        FrameLayout host = controlHost(selected, Math.max(10, component.getCornerRadiusDp()));
         CheckBox checkBox = new CheckBox(this);
         checkBox.setText(component.getTitle());
         checkBox.setTextColor(accent);
         checkBox.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
         checkBox.setChecked(isAffirmative(component.getHelper()));
-        checkBox.setEnabled(false);
-        layout.addView(checkBox, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        return layout;
+        checkBox.setButtonTintList(ColorStateList.valueOf(accent));
+        checkBox.setPadding(Math.max(padding / 2, dp(4)), 0, Math.max(padding / 2, dp(4)), 0);
+        preparePassivePreviewChild(checkBox);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER_VERTICAL);
+        host.addView(checkBox, params);
+        return host;
     }
 
     private View createSwitchPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
-        LinearLayout layout = shellLayout(background, radius, padding, selected);
+        FrameLayout host = controlHost(selected, Math.max(10, component.getCornerRadiusDp()));
+        LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.HORIZONTAL);
         layout.setGravity(Gravity.CENTER_VERTICAL);
+        layout.setPadding(Math.max(padding / 2, dp(4)), 0, Math.max(padding / 2, dp(4)), 0);
         TextView label = new TextView(this);
         label.setText(component.getTitle());
         label.setTextColor(accent);
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, component.getTextSizeSp());
         SwitchMaterial switchView = new SwitchMaterial(this);
         switchView.setChecked(isAffirmative(component.getHelper()));
-        switchView.setEnabled(false);
+        switchView.setThumbTintList(ColorStateList.valueOf(accent));
+        switchView.setTrackTintList(ColorStateList.valueOf(adjustAlpha(accent, 0.32f)));
+        preparePassivePreviewChild(switchView);
         layout.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         layout.addView(switchView, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        return layout;
+        host.addView(layout, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        return host;
     }
 
     private View createDividerPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
-        LinearLayout layout = shellLayout(background, radius, padding, selected);
-        layout.setGravity(Gravity.CENTER_VERTICAL);
+        FrameLayout host = controlHost(selected, Math.max(4, component.getCornerRadiusDp()));
         View line = new View(this);
         line.setBackgroundColor(accent);
-        layout.addView(line, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(component.isEmphasized() ? 3 : 1)));
-        return layout;
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                dp(component.isEmphasized() ? 3 : 1),
+                Gravity.CENTER);
+        params.setMargins(Math.max(padding / 2, dp(4)), 0, Math.max(padding / 2, dp(4)), 0);
+        host.addView(line, params);
+        return host;
     }
 
     private View createProgressPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
-        LinearLayout layout = shellLayout(background, radius, padding, selected);
+        FrameLayout host = controlHost(selected, Math.max(10, component.getCornerRadiusDp()));
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        layout.setPadding(Math.max(padding / 2, dp(6)), 0, Math.max(padding / 2, dp(6)), 0);
         TextView label = new TextView(this);
         label.setText(component.getTitle());
         label.setTextColor(accent);
@@ -1498,15 +1543,45 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         ProgressBar progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);
         progress.setProgress(parsePercent(component.getHelper(), 65));
+        progress.setProgressTintList(ColorStateList.valueOf(accent));
+        progress.setProgressBackgroundTintList(ColorStateList.valueOf(adjustAlpha(accent, 0.2f)));
         TextView value = new TextView(this);
         value.setText(component.getHelper());
         value.setGravity(Gravity.END);
         value.setTextColor(adjustAlpha(accent, 0.72f));
         value.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.max(10, component.getTextSizeSp() - 2));
         layout.addView(label);
-        layout.addView(progress, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(12)));
+        LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(12));
+        progressParams.setMargins(0, dp(3), 0, 0);
+        layout.addView(progress, progressParams);
         layout.addView(value);
-        return layout;
+        host.addView(layout, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        return host;
+    }
+
+    private FrameLayout controlHost(boolean selected, int radiusDp) {
+        FrameLayout host = new FrameLayout(this);
+        host.setClipChildren(false);
+        host.setClipToPadding(false);
+        if (selected) {
+            int inset = dp(2);
+            host.setPadding(inset, inset, inset, inset);
+            GradientDrawable selection = new GradientDrawable();
+            selection.setColor(Color.TRANSPARENT);
+            selection.setCornerRadius(dp(radiusDp));
+            selection.setStroke(dp(2), ContextCompat.getColor(this, R.color.accent_cobalt));
+            host.setBackground(selection);
+        }
+        return host;
+    }
+
+    private void preparePassivePreviewChild(View child) {
+        child.setClickable(false);
+        child.setLongClickable(false);
+        child.setFocusable(false);
+        child.setFocusableInTouchMode(false);
     }
 
     private LinearLayout shellLayout(int background, int radius, int padding, boolean selected) {
