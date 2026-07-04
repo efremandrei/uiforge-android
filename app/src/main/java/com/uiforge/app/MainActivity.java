@@ -6,6 +6,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.ContentUris;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -14,6 +15,7 @@ import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -52,6 +54,7 @@ import android.widget.Toast;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.AppCompatEditText;
@@ -65,6 +68,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.uiforge.app.databinding.ActivityMainBinding;
@@ -108,6 +112,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private static final String STATE_SELECTION = "selection";
     private static final String PROJECTS_DIR = "projects";
     private static final String PROJECT_EXTENSION = ".uiforge.json";
+    private static final String HEX_COLOR_PATTERN = "^#[0-9A-Fa-f]{6}$";
     private static final int CANVAS_WIDTH_DP = 320;
     private static final int CANVAS_HEIGHT_DP = 640;
     private static final int MIN_WIDGET_WIDTH_DP = 48;
@@ -438,20 +443,208 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void wireDropdowns() {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                R.layout.item_dropdown,
-                new ArrayList<>(palette.keySet()));
-        binding.backgroundColorInput.setAdapter(adapter);
-        binding.accentColorInput.setAdapter(adapter);
+        refreshColorDropdownAdapters();
         binding.backgroundColorInput.setDropDownBackgroundDrawable(
                 ContextCompat.getDrawable(this, R.drawable.bg_dropdown_popup));
         binding.accentColorInput.setDropDownBackgroundDrawable(
                 ContextCompat.getDrawable(this, R.drawable.bg_dropdown_popup));
         binding.backgroundColorInput.setOnItemClickListener((parent, view, position, id) ->
-                updateSelected(component -> component.setBackgroundColorName((String) parent.getItemAtPosition(position))));
+                handleColorSelection(true, (String) parent.getItemAtPosition(position)));
         binding.accentColorInput.setOnItemClickListener((parent, view, position, id) ->
-                updateSelected(component -> component.setAccentColorName((String) parent.getItemAtPosition(position))));
+                handleColorSelection(false, (String) parent.getItemAtPosition(position)));
+    }
+
+    private void refreshColorDropdownAdapters() {
+        List<String> options = colorDropdownOptions();
+        binding.backgroundColorInput.setAdapter(new ColorDropdownAdapter(options));
+        binding.accentColorInput.setAdapter(new ColorDropdownAdapter(options));
+    }
+
+    private List<String> colorDropdownOptions() {
+        List<String> options = new ArrayList<>(palette.keySet());
+        for (UiComponent component : components) {
+            addCustomColorOption(options, component.getBackgroundColorName());
+            addCustomColorOption(options, component.getAccentColorName());
+        }
+        options.add(getString(R.string.custom_color_option));
+        return options;
+    }
+
+    private void addCustomColorOption(List<String> options, String colorName) {
+        if (!isHexColorName(colorName)) {
+            return;
+        }
+        String normalized = normalizeHexColorName(colorFromName(colorName));
+        if (!options.contains(normalized)) {
+            options.add(normalized);
+        }
+    }
+
+    private void handleColorSelection(boolean backgroundTarget, String colorName) {
+        UiComponent selected = getSelected();
+        if (selected == null) {
+            return;
+        }
+        if (getString(R.string.custom_color_option).equals(colorName)) {
+            MaterialAutoCompleteTextView input = backgroundTarget ? binding.backgroundColorInput : binding.accentColorInput;
+            setColorInputValue(input, backgroundTarget ? selected.getBackgroundColorName() : selected.getAccentColorName());
+            showCustomColorDialog(backgroundTarget);
+            return;
+        }
+        updateSelected(component -> {
+            if (backgroundTarget) {
+                component.setBackgroundColorName(colorName);
+            } else {
+                component.setAccentColorName(colorName);
+            }
+        });
+    }
+
+    private void showCustomColorDialog(boolean backgroundTarget) {
+        UiComponent selected = getSelected();
+        if (selected == null) {
+            return;
+        }
+        int initialColor = colorFromName(backgroundTarget
+                ? selected.getBackgroundColorName()
+                : selected.getAccentColorName());
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(4), dp(8), dp(4), 0);
+
+        View preview = new View(this);
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(48));
+        previewParams.setMargins(0, 0, 0, dp(12));
+        content.addView(preview, previewParams);
+
+        TextInputLayout hexLayout = new TextInputLayout(this);
+        hexLayout.setHint(getString(R.string.hex_color_hint));
+        hexLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
+        hexLayout.setBoxBackgroundColor(ContextCompat.getColor(this, R.color.surface_primary));
+        hexLayout.setBoxStrokeColor(ContextCompat.getColor(this, R.color.accent_cobalt));
+        TextInputEditText hexInput = new TextInputEditText(this);
+        hexInput.setSingleLine(true);
+        hexInput.setTextColor(ContextCompat.getColor(this, R.color.text_strong));
+        hexInput.setText(normalizeHexColorName(initialColor));
+        hexInput.setSelection(hexInput.length());
+        hexLayout.addView(hexInput, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        content.addView(hexLayout);
+
+        TextView redLabel = createColorSliderLabel(R.string.red_value, Color.red(initialColor));
+        android.widget.SeekBar redSeek = createColorSeekBar(Color.red(initialColor));
+        TextView greenLabel = createColorSliderLabel(R.string.green_value, Color.green(initialColor));
+        android.widget.SeekBar greenSeek = createColorSeekBar(Color.green(initialColor));
+        TextView blueLabel = createColorSliderLabel(R.string.blue_value, Color.blue(initialColor));
+        android.widget.SeekBar blueSeek = createColorSeekBar(Color.blue(initialColor));
+        addColorSlider(content, redLabel, redSeek);
+        addColorSlider(content, greenLabel, greenSeek);
+        addColorSlider(content, blueLabel, blueSeek);
+
+        final boolean[] syncing = {false};
+        Runnable updatePreviewFromSliders = () -> {
+            int color = Color.rgb(redSeek.getProgress(), greenSeek.getProgress(), blueSeek.getProgress());
+            preview.setBackground(colorSwatchBackground(color));
+            redLabel.setText(getString(R.string.red_value) + ": " + redSeek.getProgress());
+            greenLabel.setText(getString(R.string.green_value) + ": " + greenSeek.getProgress());
+            blueLabel.setText(getString(R.string.blue_value) + ": " + blueSeek.getProgress());
+            if (!syncing[0]) {
+                syncing[0] = true;
+                hexInput.setText(normalizeHexColorName(color));
+                hexInput.setSelection(hexInput.length());
+                syncing[0] = false;
+            }
+        };
+        updatePreviewFromSliders.run();
+
+        android.widget.SeekBar.OnSeekBarChangeListener colorSeekListener = new SimpleSeekBarListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                updatePreviewFromSliders.run();
+            }
+        };
+        redSeek.setOnSeekBarChangeListener(colorSeekListener);
+        greenSeek.setOnSeekBarChangeListener(colorSeekListener);
+        blueSeek.setOnSeekBarChangeListener(colorSeekListener);
+
+        hexInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (syncing[0]) {
+                    return;
+                }
+                String value = s == null ? "" : s.toString().trim();
+                if (!isHexColorName(value)) {
+                    return;
+                }
+                int color = colorFromName(value);
+                syncing[0] = true;
+                redSeek.setProgress(Color.red(color));
+                greenSeek.setProgress(Color.green(color));
+                blueSeek.setProgress(Color.blue(color));
+                syncing[0] = false;
+                updatePreviewFromSliders.run();
+            }
+        });
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(backgroundTarget ? R.string.custom_background_color_title : R.string.custom_accent_color_title)
+                .setView(content)
+                .setPositiveButton(R.string.apply_label, null)
+                .setNegativeButton(R.string.close_label, (d, which) -> bindInspector())
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String value = textOf(hexInput).trim();
+            if (!isHexColorName(value)) {
+                Toast.makeText(this, R.string.invalid_color, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String colorName = normalizeHexColorName(colorFromName(value));
+            updateSelected(component -> {
+                if (backgroundTarget) {
+                    component.setBackgroundColorName(colorName);
+                } else {
+                    component.setAccentColorName(colorName);
+                }
+            });
+            dialog.dismiss();
+        }));
+        dialog.show();
+    }
+
+    private TextView createColorSliderLabel(int labelRes, int value) {
+        TextView label = new TextView(this);
+        label.setText(getString(labelRes) + ": " + value);
+        label.setTextColor(ContextCompat.getColor(this, R.color.text_strong));
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        label.setPadding(0, dp(10), 0, 0);
+        return label;
+    }
+
+    private android.widget.SeekBar createColorSeekBar(int value) {
+        android.widget.SeekBar seekBar = new android.widget.SeekBar(this);
+        seekBar.setMax(255);
+        seekBar.setProgress(value);
+        return seekBar;
+    }
+
+    private void addColorSlider(LinearLayout content, TextView label, android.widget.SeekBar seekBar) {
+        content.addView(label);
+        content.addView(seekBar, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
     }
 
     private void setupInspector() {
@@ -618,6 +811,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private void bindInspector() {
         bindingInspector = true;
+        refreshColorDropdownAdapters();
         UiComponent selected = getSelected();
         boolean enabled = selected != null;
         binding.selectedTypeLabel.setText(enabled ? selected.getType().getLabel() : getString(R.string.no_selection));
@@ -638,10 +832,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.deleteButton.setEnabled(enabled);
 
         if (selected != null) {
-            binding.componentTitleInput.setText(selected.getTitle());
-            binding.componentHelperInput.setText(selected.getHelper());
-            binding.backgroundColorInput.setText(selected.getBackgroundColorName(), false);
-            binding.accentColorInput.setText(selected.getAccentColorName(), false);
+            setInspectorText(binding.componentTitleInput, selected.getTitle());
+            setInspectorText(binding.componentHelperInput, selected.getHelper());
+            setColorInputValue(binding.backgroundColorInput, selected.getBackgroundColorName());
+            setColorInputValue(binding.accentColorInput, selected.getAccentColorName());
             binding.fullWidthSwitch.setChecked(selected.isFullWidth());
             binding.emphasisSwitch.setChecked(selected.isEmphasized());
             binding.widthSeekBar.setProgress(selected.getWidthPercent() - 30);
@@ -662,10 +856,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 binding.alignmentToggle.check(R.id.alignStartButton);
             }
         } else {
-            binding.componentTitleInput.setText("");
-            binding.componentHelperInput.setText("");
-            binding.backgroundColorInput.setText("", false);
-            binding.accentColorInput.setText("", false);
+            setInspectorText(binding.componentTitleInput, "");
+            setInspectorText(binding.componentHelperInput, "");
+            setColorInputValue(binding.backgroundColorInput, "");
+            setColorInputValue(binding.accentColorInput, "");
             binding.widthValueLabel.setText(getString(R.string.percent_value, 0));
             binding.heightValueLabel.setText(getString(R.string.auto_value));
             binding.textSizeValueLabel.setText(getString(R.string.sp_value, 0));
@@ -674,6 +868,29 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             binding.alignmentToggle.clearChecked();
         }
         bindingInspector = false;
+    }
+
+    private void setInspectorText(TextInputEditText input, String value) {
+        String safeValue = value == null ? "" : value;
+        Editable current = input.getText();
+        if (current != null && safeValue.contentEquals(current)) {
+            return;
+        }
+        input.setText(safeValue);
+        input.setSelection(safeValue.length());
+    }
+
+    private void setColorInputValue(MaterialAutoCompleteTextView input, String colorName) {
+        String safeValue = colorName == null ? "" : colorName;
+        input.setText(safeValue, false);
+        if (safeValue.isEmpty()) {
+            input.setCompoundDrawables(null, null, null, null);
+            return;
+        }
+        Drawable swatch = colorSwatchBackground(colorFromName(safeValue));
+        swatch.setBounds(0, 0, dp(20), dp(20));
+        input.setCompoundDrawables(swatch, null, null, null);
+        input.setCompoundDrawablePadding(dp(10));
     }
 
     private void renderPreview() {
@@ -2125,8 +2342,74 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     @ColorInt
     private int colorFromName(String name) {
+        if (isHexColorName(name)) {
+            try {
+                return Color.parseColor(name.trim());
+            } catch (IllegalArgumentException ignored) {
+                return Color.WHITE;
+            }
+        }
         Integer color = palette.get(name);
         return color != null ? color : Color.WHITE;
+    }
+
+    private boolean isHexColorName(String name) {
+        return name != null && name.trim().matches(HEX_COLOR_PATTERN);
+    }
+
+    private String normalizeHexColorName(int color) {
+        return String.format(Locale.US, "#%06X", 0xFFFFFF & color);
+    }
+
+    private GradientDrawable colorSwatchBackground(int color) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(5));
+        drawable.setStroke(dp(1), ContextCompat.getColor(this, R.color.stroke_soft));
+        return drawable;
+    }
+
+    private GradientDrawable customColorOptionBackground() {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setColor(Color.TRANSPARENT);
+        drawable.setCornerRadius(dp(5));
+        drawable.setStroke(dp(2), ContextCompat.getColor(this, R.color.accent_cobalt));
+        return drawable;
+    }
+
+    private final class ColorDropdownAdapter extends ArrayAdapter<String> {
+        private ColorDropdownAdapter(List<String> colors) {
+            super(MainActivity.this, R.layout.item_color_dropdown, R.id.colorNameText, colors);
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            return colorRow(position, convertView, parent);
+        }
+
+        @Override
+        public View getDropDownView(int position, View convertView, ViewGroup parent) {
+            return colorRow(position, convertView, parent);
+        }
+
+        private View colorRow(int position, View convertView, ViewGroup parent) {
+            View row = convertView != null
+                    ? convertView
+                    : getLayoutInflater().inflate(R.layout.item_color_dropdown, parent, false);
+            String colorName = getItem(position);
+            if (colorName == null) {
+                colorName = "";
+            }
+            TextView label = row.findViewById(R.id.colorNameText);
+            View swatch = row.findViewById(R.id.colorSwatch);
+            label.setText(colorName);
+            swatch.setBackground(getString(R.string.custom_color_option).equals(colorName)
+                    ? customColorOptionBackground()
+                    : colorSwatchBackground(colorFromName(colorName)));
+            return row;
+        }
     }
 
     private int resolveGravity(String alignment) {
