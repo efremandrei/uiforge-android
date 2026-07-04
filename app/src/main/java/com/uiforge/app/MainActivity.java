@@ -150,7 +150,6 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         setupPaletteButtons();
         setupTemplateButtons();
         setupInspector();
-        setupProjectNameWatcher();
         setupPreviewCanvas();
 
         if (savedInstanceState != null) {
@@ -434,11 +433,6 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         refreshAll();
     }
 
-    private void setupProjectNameWatcher() {
-        binding.projectNameInput.addTextChangedListener(simpleWatcher(
-                s -> binding.previewProjectName.setText(nonEmpty(s, "Untitled Flow"))));
-    }
-
     private void setupPreviewCanvas() {
         binding.previewCanvas.setOnDragListener(this::handlePreviewCanvasDrag);
     }
@@ -617,7 +611,6 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         if (selectedIndex >= components.size()) {
             selectedIndex = components.isEmpty() ? -1 : components.size() - 1;
         }
-        binding.previewProjectName.setText(nonEmpty(textOf(binding.projectNameInput), "Untitled Flow"));
         renderPreview();
         layerAdapter.setSelectedPosition(selectedIndex);
         bindInspector();
