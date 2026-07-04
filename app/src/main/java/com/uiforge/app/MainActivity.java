@@ -108,8 +108,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private static final String STATE_SELECTION = "selection";
     private static final String PROJECTS_DIR = "projects";
     private static final String PROJECT_EXTENSION = ".uiforge.json";
-    private static final int CANVAS_WIDTH_DP = 252;
-    private static final int CANVAS_HEIGHT_DP = 520;
+    private static final int CANVAS_WIDTH_DP = 320;
+    private static final int CANVAS_HEIGHT_DP = 640;
     private static final int MIN_WIDGET_WIDTH_DP = 48;
     private static final int MIN_WIDGET_HEIGHT_DP = 24;
 
