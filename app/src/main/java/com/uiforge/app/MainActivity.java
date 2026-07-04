@@ -154,6 +154,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         setupDarkSkinSwitch();
         setupPaletteButtons();
         setupTemplateButtons();
+        styleTemplateDropdown();
         setupInspector();
         setupPreviewCanvas();
 
@@ -409,6 +410,21 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.presetDropdownInput.setOnItemClickListener((parent, view, position, id) ->
                 applyPreset((String) parent.getItemAtPosition(position)));
         binding.startNewDesignButton.setOnClickListener(v -> startNewDesign());
+    }
+
+    private void styleTemplateDropdown() {
+        int surface = ContextCompat.getColor(this, R.color.surface_primary);
+        int strong = ContextCompat.getColor(this, R.color.text_strong);
+        int soft = ContextCompat.getColor(this, R.color.text_soft);
+        int accent = ContextCompat.getColor(this, R.color.accent_cobalt);
+        ColorStateList accentOnly = ColorStateList.valueOf(accent);
+        binding.presetDropdownLayout.setBoxBackgroundColor(surface);
+        binding.presetDropdownLayout.setBoxStrokeColor(accent);
+        binding.presetDropdownLayout.setEndIconTintList(accentOnly);
+        binding.presetDropdownInput.setTextColor(strong);
+        binding.presetDropdownInput.setHintTextColor(soft);
+        binding.presetDropdownInput.setDropDownBackgroundDrawable(
+                ContextCompat.getDrawable(this, R.drawable.bg_dropdown_popup));
     }
 
     private void applyPreset(String presetName) {
