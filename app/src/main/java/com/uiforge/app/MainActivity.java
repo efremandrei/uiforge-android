@@ -342,6 +342,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.textSizeValueLabel.setTextColor(softText);
         binding.paddingValueLabel.setTextColor(softText);
         binding.radiusValueLabel.setTextColor(softText);
+        binding.opacityValueLabel.setTextColor(softText);
         binding.deleteButton.setTextColor(ColorStateList.valueOf(danger));
         binding.deleteButton.setStrokeColor(ColorStateList.valueOf(danger));
     }
@@ -855,6 +856,15 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 }
             }
         });
+        binding.opacitySeekBar.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                binding.opacityValueLabel.setText(getString(R.string.percent_value, progress));
+                if (fromUser) {
+                    updateSelected(component -> component.setOpacityPercent(progress));
+                }
+            }
+        });
         binding.alignmentToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked || bindingInspector) {
                 return;
@@ -972,8 +982,11 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.alignCenterButton.setEnabled(enabled);
         binding.alignEndButton.setEnabled(enabled);
         binding.deleteButton.setEnabled(enabled);
+        binding.opacitySeekBar.setEnabled(enabled);
 
         if (selected != null) {
+            boolean opacitySupported = supportsOpacity(selected);
+            binding.opacityControlGroup.setVisibility(opacitySupported ? View.VISIBLE : View.GONE);
             setInspectorText(binding.componentTitleInput, selected.getTitle());
             setInspectorText(binding.componentHelperInput, selected.getHelper());
             setColorInputValue(binding.backgroundColorInput, selected.getBackgroundColorName());
@@ -985,11 +998,13 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             binding.textSizeSeekBar.setProgress(selected.getTextSizeSp() - 10);
             binding.paddingSeekBar.setProgress(selected.getPaddingDp() - 8);
             binding.radiusSeekBar.setProgress(selected.getCornerRadiusDp() - 4);
+            binding.opacitySeekBar.setProgress(selected.getOpacityPercent());
             binding.widthValueLabel.setText(getString(R.string.percent_value, selected.getWidthPercent()));
             binding.heightValueLabel.setText(selected.getHeightDp() == 0 ? getString(R.string.auto_value) : getString(R.string.dp_value, selected.getHeightDp()));
             binding.textSizeValueLabel.setText(getString(R.string.sp_value, selected.getTextSizeSp()));
             binding.paddingValueLabel.setText(getString(R.string.dp_value, selected.getPaddingDp()));
             binding.radiusValueLabel.setText(getString(R.string.dp_value, selected.getCornerRadiusDp()));
+            binding.opacityValueLabel.setText(getString(R.string.percent_value, selected.getOpacityPercent()));
             if ("center".equals(selected.getAlignment())) {
                 binding.alignmentToggle.check(R.id.alignCenterButton);
             } else if ("end".equals(selected.getAlignment())) {
@@ -1007,6 +1022,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             binding.textSizeValueLabel.setText(getString(R.string.sp_value, 0));
             binding.paddingValueLabel.setText(getString(R.string.dp_value, 0));
             binding.radiusValueLabel.setText(getString(R.string.dp_value, 0));
+            binding.opacityValueLabel.setText(getString(R.string.percent_value, 0));
+            binding.opacitySeekBar.setProgress(100);
+            binding.opacityControlGroup.setVisibility(View.GONE);
             binding.alignmentToggle.clearChecked();
         }
         bindingInspector = false;
@@ -1692,94 +1710,143 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         return event.getY() + viewLocation[1] - canvasLocation[1];
     }
 
+    private boolean supportsOpacity(UiComponent component) {
+        return component != null && component.getType() != UiComponentType.SPACER;
+    }
+
     private View createPreviewView(UiComponent component, boolean selected) {
         int background = colorFromName(component.getBackgroundColorName());
         int accent = colorFromName(component.getAccentColorName());
         int padding = dp(component.getPaddingDp());
         int radius = dp(component.getCornerRadiusDp());
+        View view;
         switch (component.getType()) {
             case HEADER:
-                return createHeaderPreview(component, background, accent, padding, radius, selected);
+                view = createHeaderPreview(component, background, accent, padding, radius, selected);
+                break;
             case TEXT:
-                return createTextPreview(component, background, accent, padding, radius, selected);
+                view = createTextPreview(component, background, accent, padding, radius, selected);
+                break;
             case BUTTON:
-                return createButtonPreview(component, background, accent, padding, radius, selected);
+                view = createButtonPreview(component, background, accent, padding, radius, selected);
+                break;
             case INPUT:
-                return createInputPreview(component, background, accent, padding, radius, selected);
+                view = createInputPreview(component, background, accent, padding, radius, selected);
+                break;
             case TEXT_AREA:
-                return createTextAreaPreview(component, background, accent, padding, radius, selected);
+                view = createTextAreaPreview(component, background, accent, padding, radius, selected);
+                break;
             case SEARCH_BAR:
-                return createSearchBarPreview(component, background, accent, padding, radius, selected);
+                view = createSearchBarPreview(component, background, accent, padding, radius, selected);
+                break;
             case CARD:
-                return createCardPreview(component, background, accent, padding, radius, selected);
+                view = createCardPreview(component, background, accent, padding, radius, selected);
+                break;
             case IMAGE:
-                return createImagePreview(component, background, accent, padding, radius, selected);
+                view = createImagePreview(component, background, accent, padding, radius, selected);
+                break;
             case TABS:
-                return createTabsPreview(component, background, accent, padding, radius, selected);
+                view = createTabsPreview(component, background, accent, padding, radius, selected);
+                break;
             case DROPDOWN:
-                return createDropdownPreview(component, background, accent, padding, radius, selected);
+                view = createDropdownPreview(component, background, accent, padding, radius, selected);
+                break;
             case CHECKBOX:
-                return createCheckboxPreview(component, background, accent, padding, radius, selected);
+                view = createCheckboxPreview(component, background, accent, padding, radius, selected);
+                break;
             case RADIO_GROUP:
-                return createRadioGroupPreview(component, background, accent, padding, radius, selected);
+                view = createRadioGroupPreview(component, background, accent, padding, radius, selected);
+                break;
             case SWITCH:
-                return createSwitchPreview(component, background, accent, padding, radius, selected);
+                view = createSwitchPreview(component, background, accent, padding, radius, selected);
+                break;
             case DIVIDER:
-                return createDividerPreview(component, background, accent, padding, radius, selected);
+                view = createDividerPreview(component, background, accent, padding, radius, selected);
+                break;
             case SLIDER:
-                return createSliderPreview(component, background, accent, padding, radius, selected);
+                view = createSliderPreview(component, background, accent, padding, radius, selected);
+                break;
             case TOP_APP_BAR:
-                return createTopAppBarPreview(component, background, accent, padding, radius, selected);
+                view = createTopAppBarPreview(component, background, accent, padding, radius, selected);
+                break;
             case BOTTOM_NAV:
-                return createBottomNavPreview(component, background, accent, padding, radius, selected);
+                view = createBottomNavPreview(component, background, accent, padding, radius, selected);
+                break;
             case FAB:
-                return createFabPreview(component, background, accent, padding, radius, selected);
+                view = createFabPreview(component, background, accent, padding, radius, selected);
+                break;
             case ICON_BUTTON:
-                return createIconButtonPreview(component, background, accent, padding, radius, selected);
+                view = createIconButtonPreview(component, background, accent, padding, radius, selected);
+                break;
             case AVATAR:
-                return createAvatarPreview(component, background, accent, padding, radius, selected);
+                view = createAvatarPreview(component, background, accent, padding, radius, selected);
+                break;
             case BADGE:
-                return createBadgePreview(component, background, accent, padding, radius, selected);
+                view = createBadgePreview(component, background, accent, padding, radius, selected);
+                break;
             case CHIP:
-                return createChipPreview(component, background, accent, padding, radius, selected);
+                view = createChipPreview(component, background, accent, padding, radius, selected);
+                break;
             case LIST_ITEM:
-                return createListItemPreview(component, background, accent, padding, radius, selected);
+                view = createListItemPreview(component, background, accent, padding, radius, selected);
+                break;
             case GRID_ITEM:
-                return createGridItemPreview(component, background, accent, padding, radius, selected);
+                view = createGridItemPreview(component, background, accent, padding, radius, selected);
+                break;
             case MENU:
-                return createMenuPreview(component, background, accent, padding, radius, selected);
+                view = createMenuPreview(component, background, accent, padding, radius, selected);
+                break;
             case DIALOG:
-                return createDialogPreview(component, background, accent, padding, radius, selected);
+                view = createDialogPreview(component, background, accent, padding, radius, selected);
+                break;
             case SNACKBAR:
-                return createSnackbarPreview(component, background, accent, padding, radius, selected);
+                view = createSnackbarPreview(component, background, accent, padding, radius, selected);
+                break;
             case RATING:
-                return createRatingPreview(component, background, accent, padding, radius, selected);
+                view = createRatingPreview(component, background, accent, padding, radius, selected);
+                break;
             case STEPPER:
-                return createStepperPreview(component, background, accent, padding, radius, selected);
+                view = createStepperPreview(component, background, accent, padding, radius, selected);
+                break;
             case LOADING:
-                return createLoadingPreview(component, background, accent, padding, radius, selected);
+                view = createLoadingPreview(component, background, accent, padding, radius, selected);
+                break;
             case SKELETON:
-                return createSkeletonPreview(component, background, accent, padding, radius, selected);
+                view = createSkeletonPreview(component, background, accent, padding, radius, selected);
+                break;
             case MAP:
-                return createMapPreview(component, background, accent, padding, radius, selected);
+                view = createMapPreview(component, background, accent, padding, radius, selected);
+                break;
             case CHART:
-                return createChartPreview(component, background, accent, padding, radius, selected);
+                view = createChartPreview(component, background, accent, padding, radius, selected);
+                break;
             case MEDIA_PLAYER:
-                return createMediaPlayerPreview(component, background, accent, padding, radius, selected);
+                view = createMediaPlayerPreview(component, background, accent, padding, radius, selected);
+                break;
             case QR_CODE:
-                return createQrPreview(component, background, accent, padding, radius, selected);
+                view = createQrPreview(component, background, accent, padding, radius, selected);
+                break;
             case SPACER:
-                return createSpacerPreview(component, background, accent, padding, radius, selected);
+                view = createSpacerPreview(component, background, accent, padding, radius, selected);
+                break;
             case ROW:
-                return createLayoutPreview(component, background, accent, padding, radius, selected, LinearLayout.HORIZONTAL);
+                view = createLayoutPreview(component, background, accent, padding, radius, selected, LinearLayout.HORIZONTAL);
+                break;
             case COLUMN:
-                return createLayoutPreview(component, background, accent, padding, radius, selected, LinearLayout.VERTICAL);
+                view = createLayoutPreview(component, background, accent, padding, radius, selected, LinearLayout.VERTICAL);
+                break;
             case GRID:
-                return createGridLayoutPreview(component, background, accent, padding, radius, selected);
+                view = createGridLayoutPreview(component, background, accent, padding, radius, selected);
+                break;
             case PROGRESS:
             default:
-                return createProgressPreview(component, background, accent, padding, radius, selected);
+                view = createProgressPreview(component, background, accent, padding, radius, selected);
+                break;
         }
+        if (supportsOpacity(component)) {
+            view.setAlpha(component.getOpacityPercent() / 100f);
+        }
+        return view;
     }
 
     private View createHeaderPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
@@ -2986,6 +3053,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             item.put("widthDp", component.getWidthDp());
             item.put("heightDp", component.getHeightDp());
             item.put("textSizeSp", component.getTextSizeSp());
+            item.put("opacityPercent", component.getOpacityPercent());
             item.put("xDp", component.getXdp());
             item.put("yDp", component.getYdp());
             items.put(item);
@@ -3016,6 +3084,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 component.setWidthDp(item.optInt("widthDp", 0));
                 component.setHeightDp(item.optInt("heightDp", component.getHeightDp()));
                 component.setTextSizeSp(item.optInt("textSizeSp", component.getTextSizeSp()));
+                component.setOpacityPercent(item.optInt("opacityPercent", 100));
                 if (item.has("xDp") || item.has("yDp")) {
                     component.setXdp(item.optInt("xDp", 12));
                     component.setYdp(item.optInt("yDp", 16));

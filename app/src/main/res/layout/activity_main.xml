@@ -687,6 +687,37 @@
                         android:progressTint="@color/accent_cobalt"
                         android:thumbTint="@color/accent_cobalt" />
 
+                    <LinearLayout
+                        android:id="@+id/opacityControlGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/opacity"
+                            android:textColor="@color/text_strong"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/opacityValueLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:textColor="@color/text_soft" />
+
+                        <SeekBar
+                            android:id="@+id/opacitySeekBar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:max="100"
+                            android:progressBackgroundTint="@color/stroke_soft"
+                            android:progressTint="@color/accent_cobalt"
+                            android:thumbTint="@color/accent_cobalt" />
+                    </LinearLayout>
+
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

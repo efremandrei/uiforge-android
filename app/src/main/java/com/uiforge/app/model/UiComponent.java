@@ -19,6 +19,7 @@ public class UiComponent implements Serializable {
     private int textSizeSp = 16;
     private int xDp = 12;
     private int yDp = 16;
+    private Integer opacityPercent = 100;
 
     public UiComponent(UiComponentType type, String title, String helper, String backgroundColorName,
                        String accentColorName, boolean fullWidth, boolean emphasized, int paddingDp,
@@ -376,6 +377,17 @@ public class UiComponent implements Serializable {
 
     public void setYdp(int yDp) {
         this.yDp = Math.max(0, yDp);
+    }
+
+    public int getOpacityPercent() {
+        if (opacityPercent == null) {
+            return 100;
+        }
+        return Math.max(0, Math.min(100, opacityPercent));
+    }
+
+    public void setOpacityPercent(int opacityPercent) {
+        this.opacityPercent = Math.max(0, Math.min(100, opacityPercent));
     }
 
     public String getSummary() {
