@@ -236,6 +236,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void setupDarkSkinSwitch() {
         boolean darkSkin = getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
                 .getBoolean(DARK_SKIN_PREF, false);
+        configureSwitchContrast(binding.darkSkinSwitch);
         binding.darkSkinSwitch.setChecked(darkSkin);
         binding.darkSkinSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             getSharedPreferences(SETTINGS_PREFS, Context.MODE_PRIVATE)
@@ -368,12 +369,31 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         if (view instanceof MaterialButton) {
             ((MaterialButton) view).setIconTint(strongText);
         }
+        if (view instanceof SwitchMaterial) {
+            configureSwitchContrast((SwitchMaterial) view);
+        }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
                 styleInspectorViewTree(group.getChildAt(i), strongText, softText, fieldStroke, surface);
             }
         }
+    }
+
+    private void configureSwitchContrast(SwitchMaterial switchView) {
+        int accent = ContextCompat.getColor(this, R.color.accent_cobalt);
+        int soft = ContextCompat.getColor(this, R.color.text_soft);
+        int stroke = ContextCompat.getColor(this, R.color.stroke_soft);
+        int[][] states = new int[][]{
+                new int[]{android.R.attr.state_enabled, android.R.attr.state_checked},
+                new int[]{-android.R.attr.state_enabled},
+                new int[]{}};
+        switchView.setThumbTintList(new ColorStateList(
+                states,
+                new int[]{accent, adjustAlpha(soft, 0.55f), soft}));
+        switchView.setTrackTintList(new ColorStateList(
+                states,
+                new int[]{adjustAlpha(accent, 0.46f), adjustAlpha(stroke, 0.55f), stroke}));
     }
 
     private void setupLists() {
