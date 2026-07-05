@@ -346,6 +346,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.opacityValueLabel.setTextColor(softText);
         binding.deleteButton.setTextColor(ColorStateList.valueOf(danger));
         binding.deleteButton.setStrokeColor(ColorStateList.valueOf(danger));
+        configureInspectorCloseButton();
     }
 
     private void styleInspectorViewTree(
@@ -394,6 +395,32 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         switchView.setTrackTintList(new ColorStateList(
                 states,
                 new int[]{adjustAlpha(accent, 0.46f), adjustAlpha(stroke, 0.55f), stroke}));
+    }
+
+    private void configureInspectorCloseButton() {
+        int accent = ContextCompat.getColor(this, R.color.accent_cobalt);
+        int text = readableTextOn(accent);
+        binding.closeInspectorDrawerButton.setBackgroundTintList(ColorStateList.valueOf(accent));
+        binding.closeInspectorDrawerButton.setStrokeColor(ColorStateList.valueOf(adjustAlpha(text, 0.42f)));
+        binding.closeInspectorDrawerButton.setTextColor(ColorStateList.valueOf(text));
+        binding.closeInspectorDrawerButton.setCornerRadius(dp(18));
+        binding.closeInspectorDrawerButton.setStrokeWidth(dp(2));
+        binding.closeInspectorDrawerButton.setInsetTop(0);
+        binding.closeInspectorDrawerButton.setInsetBottom(0);
+    }
+
+    private int readableTextOn(int background) {
+        double red = linearizedColorChannel(Color.red(background) / 255d);
+        double green = linearizedColorChannel(Color.green(background) / 255d);
+        double blue = linearizedColorChannel(Color.blue(background) / 255d);
+        double luminance = (0.2126d * red) + (0.7152d * green) + (0.0722d * blue);
+        return luminance > 0.45d ? Color.parseColor("#08141C") : Color.WHITE;
+    }
+
+    private double linearizedColorChannel(double channel) {
+        return channel <= 0.03928d
+                ? channel / 12.92d
+                : Math.pow((channel + 0.055d) / 1.055d, 2.4d);
     }
 
     private void setupLists() {
