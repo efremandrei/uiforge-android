@@ -150,6 +150,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         setupToolbar();
         setupLists();
         setupHelpButtons();
+        styleProjectNameField();
         styleInspectorDrawer();
         setupDarkSkinSwitch();
         setupPaletteButtons();
@@ -298,6 +299,19 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         button.setInsetTop(0);
         button.setInsetBottom(0);
         button.setPadding(0, 0, 0, 0);
+    }
+
+    private void styleProjectNameField() {
+        int input = ContextCompat.getColor(this, R.color.hero_input);
+        int text = ContextCompat.getColor(this, R.color.hero_text);
+        int hint = ContextCompat.getColor(this, R.color.hero_text_soft);
+        ColorStateList hintList = ColorStateList.valueOf(hint);
+        binding.projectNameLayout.setBoxBackgroundColor(input);
+        binding.projectNameLayout.setBoxStrokeColor(hint);
+        binding.projectNameLayout.setDefaultHintTextColor(hintList);
+        binding.projectNameLayout.setHintTextColor(hintList);
+        binding.projectNameInput.setTextColor(text);
+        binding.projectNameInput.setHintTextColor(hint);
     }
 
     private void styleInspectorDrawer() {
