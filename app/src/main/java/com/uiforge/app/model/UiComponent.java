@@ -48,6 +48,15 @@ public class UiComponent implements Serializable {
                 heightDp = 54;
                 textSizeSp = 15;
                 break;
+            case INPUT:
+            case SEARCH_BAR:
+                heightDp = 56;
+                textSizeSp = 16;
+                break;
+            case TEXT_AREA:
+                heightDp = 118;
+                textSizeSp = 16;
+                break;
             case TABS:
                 heightDp = 48;
                 textSizeSp = 14;
@@ -57,6 +66,7 @@ public class UiComponent implements Serializable {
                 textSizeSp = 15;
                 break;
             case CHECKBOX:
+            case RADIO_GROUP:
             case SWITCH:
                 heightDp = 52;
                 textSizeSp = 15;
@@ -69,13 +79,73 @@ public class UiComponent implements Serializable {
                 heightDp = 70;
                 textSizeSp = 14;
                 break;
+            case SLIDER:
+            case STEPPER:
+            case MEDIA_PLAYER:
+                heightDp = 76;
+                textSizeSp = 14;
+                break;
+            case TOP_APP_BAR:
+            case BOTTOM_NAV:
+            case SNACKBAR:
+                heightDp = 64;
+                textSizeSp = 14;
+                break;
+            case FAB:
+            case ICON_BUTTON:
+            case AVATAR:
+                heightDp = 64;
+                textSizeSp = 18;
+                break;
+            case BADGE:
+            case CHIP:
+                heightDp = 42;
+                textSizeSp = 13;
+                break;
+            case LIST_ITEM:
+                heightDp = 82;
+                textSizeSp = 16;
+                break;
+            case GRID_ITEM:
+            case MENU:
+            case DIALOG:
+                heightDp = 132;
+                textSizeSp = 16;
+                break;
+            case RATING:
+            case LOADING:
+                heightDp = 58;
+                textSizeSp = 14;
+                break;
+            case SKELETON:
+                heightDp = 92;
+                textSizeSp = 14;
+                break;
+            case MAP:
+            case CHART:
+            case GRID:
+                heightDp = 150;
+                textSizeSp = 16;
+                break;
+            case QR_CODE:
+            case COLUMN:
+                heightDp = 128;
+                textSizeSp = 14;
+                break;
+            case SPACER:
+                heightDp = 44;
+                textSizeSp = 12;
+                break;
+            case ROW:
+                heightDp = 78;
+                textSizeSp = 14;
+                break;
             case CARD:
                 textSizeSp = 18;
                 break;
             case IMAGE:
                 heightDp = 150;
                 break;
-            case INPUT:
             default:
                 textSizeSp = 16;
                 break;
@@ -102,6 +172,10 @@ public class UiComponent implements Serializable {
                 input.setHeightDp(0);
                 input.setTextSizeSp(16);
                 return input;
+            case TEXT_AREA:
+                return new UiComponent(type, "Message", "Write your message here", "White", "Ink", true, false, 14, 18, "start");
+            case SEARCH_BAR:
+                return new UiComponent(type, "Search", "Search products", "White", "Cobalt", true, false, 14, 28, "start");
             case CARD:
                 UiComponent card = new UiComponent(type, "Feature card", "Highlight one benefit or next step", "White", "Sunset", true, false, 18, 24, "start");
                 card.setTextSizeSp(18);
@@ -117,10 +191,62 @@ public class UiComponent implements Serializable {
                 return new UiComponent(type, "Country", "Select an option", "White", "Ink", true, false, 14, 18, "start");
             case CHECKBOX:
                 return new UiComponent(type, "Accept terms", "Checked", "White", "Mint", true, false, 12, 16, "start");
+            case RADIO_GROUP:
+                return new UiComponent(type, "Plan", "Free, Pro, Team", "White", "Cobalt", true, false, 12, 16, "start");
             case SWITCH:
                 return new UiComponent(type, "Enable notifications", "On", "White", "Cobalt", true, false, 12, 16, "start");
             case DIVIDER:
                 return new UiComponent(type, "Section divider", "", "White", "Ink", true, false, 8, 8, "center");
+            case SLIDER:
+                return new UiComponent(type, "Volume", "60%", "White", "Mint", true, false, 12, 18, "start");
+            case TOP_APP_BAR:
+                return new UiComponent(type, "Dashboard", "Menu, Search, Profile", "Cobalt", "White", true, true, 12, 18, "start");
+            case BOTTOM_NAV:
+                return new UiComponent(type, "Home, Search, Profile", "Home", "White", "Cobalt", true, false, 8, 18, "center");
+            case FAB:
+                return new UiComponent(type, "+", "Primary action", "Mint", "White", false, true, 8, 32, "center");
+            case ICON_BUTTON:
+                return new UiComponent(type, "Search", "Icon action", "White", "Cobalt", false, false, 8, 20, "center");
+            case AVATAR:
+                return new UiComponent(type, "Andrei", "AE", "Cobalt", "White", false, true, 8, 32, "center");
+            case BADGE:
+                return new UiComponent(type, "Notifications", "3", "Sunset", "White", false, true, 8, 18, "center");
+            case CHIP:
+                return new UiComponent(type, "Filter", "Selected", "Ice", "Cobalt", false, false, 10, 20, "center");
+            case LIST_ITEM:
+                return new UiComponent(type, "Order #1042", "Delivered today", "White", "Ink", true, false, 12, 18, "start");
+            case GRID_ITEM:
+                return new UiComponent(type, "Product tile", "$24", "White", "Sunset", false, false, 14, 20, "center");
+            case MENU:
+                return new UiComponent(type, "Menu", "Edit, Share, Delete", "White", "Ink", false, false, 12, 16, "start");
+            case DIALOG:
+                return new UiComponent(type, "Delete item?", "This action can be cancelled", "White", "Cobalt", true, false, 16, 24, "start");
+            case SNACKBAR:
+                return new UiComponent(type, "Saved", "Undo", "Charcoal", "White", true, true, 12, 18, "start");
+            case RATING:
+                return new UiComponent(type, "Rating", "4", "White", "Gold", false, false, 10, 16, "center");
+            case STEPPER:
+                return new UiComponent(type, "Step 2 of 4", "Account details", "White", "Cobalt", true, false, 12, 18, "start");
+            case LOADING:
+                return new UiComponent(type, "Loading", "In progress", "White", "Mint", false, false, 8, 16, "center");
+            case SKELETON:
+                return new UiComponent(type, "Skeleton", "Loading state", "Ice", "Cobalt", true, false, 12, 18, "start");
+            case MAP:
+                return new UiComponent(type, "Map area", "Pinned location", "Ice", "Mint", true, false, 12, 20, "center");
+            case CHART:
+                return new UiComponent(type, "Revenue", "Q1, Q2, Q3", "White", "Cobalt", true, false, 12, 20, "start");
+            case MEDIA_PLAYER:
+                return new UiComponent(type, "Preview", "00:32 / 03:10", "Charcoal", "Gold", true, false, 12, 18, "start");
+            case QR_CODE:
+                return new UiComponent(type, "Scan code", "QR", "White", "Ink", false, false, 10, 16, "center");
+            case SPACER:
+                return new UiComponent(type, "Spacer", "", "White", "Ice", true, false, 8, 8, "center");
+            case ROW:
+                return new UiComponent(type, "Horizontal group", "Item A, Item B", "Ice", "Cobalt", true, false, 10, 16, "center");
+            case COLUMN:
+                return new UiComponent(type, "Vertical group", "Item A, Item B", "Ice", "Cobalt", true, false, 10, 16, "center");
+            case GRID:
+                return new UiComponent(type, "Grid layout", "2 x 2", "Ice", "Cobalt", true, false, 10, 16, "center");
             case PROGRESS:
             default:
                 return new UiComponent(type, "Setup progress", "65%", "White", "Mint", true, false, 14, 18, "start");

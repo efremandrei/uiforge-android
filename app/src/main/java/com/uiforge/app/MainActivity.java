@@ -43,6 +43,7 @@ import android.provider.MediaStore;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -125,6 +126,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private final SimpleDateFormat fileLogDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
     private LayerAdapter layerAdapter;
     private PopupWindow inspectorPopup;
+    private final Map<String, Boolean> paletteGroupsExpanded = new LinkedHashMap<>();
     private boolean bindingInspector;
     private boolean dragInProgress;
     private boolean resizeHandlesVisible;
@@ -380,27 +382,137 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void setupPaletteButtons() {
-        configurePaletteButton(binding.addHeaderButton, UiComponentType.HEADER);
-        configurePaletteButton(binding.addTextButton, UiComponentType.TEXT);
-        configurePaletteButton(binding.addButtonButton, UiComponentType.BUTTON);
-        configurePaletteButton(binding.addInputButton, UiComponentType.INPUT);
-        configurePaletteButton(binding.addCardButton, UiComponentType.CARD);
-        configurePaletteButton(binding.addImageButton, UiComponentType.IMAGE);
-        configurePaletteButton(binding.addTabsButton, UiComponentType.TABS);
-        configurePaletteButton(binding.addDropdownButton, UiComponentType.DROPDOWN);
-        configurePaletteButton(binding.addCheckboxButton, UiComponentType.CHECKBOX);
-        configurePaletteButton(binding.addSwitchButton, UiComponentType.SWITCH);
-        configurePaletteButton(binding.addDividerButton, UiComponentType.DIVIDER);
-        configurePaletteButton(binding.addProgressButton, UiComponentType.PROGRESS);
+        for (String groupName : paletteGroups().keySet()) {
+            if (!paletteGroupsExpanded.containsKey(groupName)) {
+                paletteGroupsExpanded.put(groupName, "Basics".equals(groupName));
+            }
+        }
+        renderPaletteGroups();
     }
 
-    private void configurePaletteButton(MaterialButton button, UiComponentType type) {
+    private Map<String, List<UiComponentType>> paletteGroups() {
+        Map<String, List<UiComponentType>> groups = new LinkedHashMap<>();
+        groups.put("Basics", Arrays.asList(
+                UiComponentType.HEADER,
+                UiComponentType.TEXT,
+                UiComponentType.BUTTON,
+                UiComponentType.INPUT,
+                UiComponentType.TEXT_AREA,
+                UiComponentType.SEARCH_BAR,
+                UiComponentType.CARD,
+                UiComponentType.IMAGE));
+        groups.put("Input & Choice", Arrays.asList(
+                UiComponentType.TABS,
+                UiComponentType.DROPDOWN,
+                UiComponentType.CHECKBOX,
+                UiComponentType.RADIO_GROUP,
+                UiComponentType.SWITCH,
+                UiComponentType.SLIDER));
+        groups.put("Navigation", Arrays.asList(
+                UiComponentType.TOP_APP_BAR,
+                UiComponentType.BOTTOM_NAV,
+                UiComponentType.FAB,
+                UiComponentType.ICON_BUTTON,
+                UiComponentType.MENU));
+        groups.put("Content & Feedback", Arrays.asList(
+                UiComponentType.AVATAR,
+                UiComponentType.BADGE,
+                UiComponentType.CHIP,
+                UiComponentType.LIST_ITEM,
+                UiComponentType.GRID_ITEM,
+                UiComponentType.DIALOG,
+                UiComponentType.SNACKBAR,
+                UiComponentType.RATING,
+                UiComponentType.STEPPER,
+                UiComponentType.PROGRESS,
+                UiComponentType.LOADING,
+                UiComponentType.SKELETON));
+        groups.put("Media & Data", Arrays.asList(
+                UiComponentType.MAP,
+                UiComponentType.CHART,
+                UiComponentType.MEDIA_PLAYER,
+                UiComponentType.QR_CODE));
+        groups.put("Layout", Arrays.asList(
+                UiComponentType.DIVIDER,
+                UiComponentType.SPACER,
+                UiComponentType.ROW,
+                UiComponentType.COLUMN,
+                UiComponentType.GRID));
+        return groups;
+    }
+
+    private void renderPaletteGroups() {
+        binding.paletteGroupsContainer.removeAllViews();
+        int accent = ContextCompat.getColor(this, R.color.accent_cobalt);
+        int surface = ContextCompat.getColor(this, R.color.surface_primary);
+        int selectedSurface = ContextCompat.getColor(this, R.color.surface_selected);
+        int strong = ContextCompat.getColor(this, R.color.text_strong);
+        for (Map.Entry<String, List<UiComponentType>> entry : paletteGroups().entrySet()) {
+            String groupName = entry.getKey();
+            boolean expanded = Boolean.TRUE.equals(paletteGroupsExpanded.get(groupName));
+
+            MaterialButton header = new MaterialButton(this);
+            header.setText((expanded ? "- " : "+ ") + groupName);
+            header.setAllCaps(false);
+            header.setGravity(Gravity.CENTER_VERTICAL);
+            header.setTextColor(strong);
+            header.setBackgroundTintList(ColorStateList.valueOf(selectedSurface));
+            header.setStrokeColor(ColorStateList.valueOf(accent));
+            header.setStrokeWidth(dp(1));
+            header.setCornerRadius(dp(14));
+            header.setMinHeight(dp(44));
+            header.setInsetTop(0);
+            header.setInsetBottom(0);
+            header.setOnClickListener(v -> {
+                paletteGroupsExpanded.put(groupName, !Boolean.TRUE.equals(paletteGroupsExpanded.get(groupName)));
+                renderPaletteGroups();
+            });
+            LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    dp(44));
+            headerParams.setMargins(0, 0, 0, dp(8));
+            binding.paletteGroupsContainer.addView(header, headerParams);
+
+            if (!expanded) {
+                continue;
+            }
+
+            HorizontalScrollView scroll = new HorizontalScrollView(this);
+            scroll.setHorizontalScrollBarEnabled(false);
+            scroll.setFadingEdgeLength(dp(28));
+            scroll.setHorizontalFadingEdgeEnabled(true);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(0, 0, 0, dp(8));
+            for (UiComponentType type : entry.getValue()) {
+                MaterialButton button = new MaterialButton(this);
+                button.setText(type.getLabel());
+                configurePaletteButton(button, type, surface, accent);
+                LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        dp(48));
+                buttonParams.setMargins(0, 0, dp(8), 0);
+                row.addView(button, buttonParams);
+            }
+            scroll.addView(row, new HorizontalScrollView.LayoutParams(
+                    HorizontalScrollView.LayoutParams.WRAP_CONTENT,
+                    HorizontalScrollView.LayoutParams.WRAP_CONTENT));
+            LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            scrollParams.setMargins(0, 0, 0, dp(10));
+            binding.paletteGroupsContainer.addView(scroll, scrollParams);
+        }
+    }
+
+    private void configurePaletteButton(MaterialButton button, UiComponentType type, int surface, int accent) {
         button.setMinWidth(dp(92));
         button.setMinHeight(dp(48));
-        button.setTextColor(ContextCompat.getColor(this, R.color.accent_cobalt));
+        button.setSingleLine(true);
+        button.setTextColor(accent);
         button.setStrokeWidth(dp(2));
-        button.setStrokeColor(android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, R.color.accent_cobalt)));
-        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, R.color.surface_primary)));
+        button.setStrokeColor(ColorStateList.valueOf(accent));
+        button.setBackgroundTintList(ColorStateList.valueOf(surface));
         button.setInsetTop(0);
         button.setInsetBottom(0);
         button.setOnClickListener(v -> Toast.makeText(this, R.string.drag_palette_toast, Toast.LENGTH_SHORT).show());
@@ -1339,12 +1451,41 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             case BUTTON:
             case DROPDOWN:
             case INPUT:
+            case TEXT_AREA:
+            case SEARCH_BAR:
+            case SLIDER:
+            case SNACKBAR:
                 return clamp(180, MIN_WIDGET_WIDTH_DP, canvasWidth);
+            case FAB:
+            case ICON_BUTTON:
+            case AVATAR:
+            case BADGE:
+            case CHIP:
+            case LOADING:
+            case QR_CODE:
+            case GRID_ITEM:
+                return clamp(120, MIN_WIDGET_WIDTH_DP, canvasWidth);
             case CHECKBOX:
+            case RADIO_GROUP:
             case SWITCH:
             case DIVIDER:
             case PROGRESS:
+            case RATING:
+            case STEPPER:
+            case MEDIA_PLAYER:
                 return clamp(190, MIN_WIDGET_WIDTH_DP, canvasWidth);
+            case TOP_APP_BAR:
+            case BOTTOM_NAV:
+            case LIST_ITEM:
+            case DIALOG:
+            case SKELETON:
+            case MAP:
+            case CHART:
+            case ROW:
+            case COLUMN:
+            case GRID:
+            case SPACER:
+                return clamp(240, MIN_WIDGET_WIDTH_DP, canvasWidth);
             default:
                 return clamp(210, MIN_WIDGET_WIDTH_DP, canvasWidth);
         }
@@ -1361,8 +1502,46 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 return 92;
             case INPUT:
                 return 74;
+            case TEXT_AREA:
+                return 118;
+            case SEARCH_BAR:
+                return 56;
             case CARD:
                 return 118;
+            case TOP_APP_BAR:
+            case BOTTOM_NAV:
+            case SNACKBAR:
+                return 64;
+            case FAB:
+            case ICON_BUTTON:
+            case AVATAR:
+                return 64;
+            case BADGE:
+            case CHIP:
+                return 42;
+            case LIST_ITEM:
+                return 82;
+            case GRID_ITEM:
+            case MENU:
+            case DIALOG:
+            case COLUMN:
+            case QR_CODE:
+                return 132;
+            case MAP:
+            case CHART:
+            case GRID:
+                return 150;
+            case RADIO_GROUP:
+            case SLIDER:
+            case STEPPER:
+            case MEDIA_PLAYER:
+                return 76;
+            case SKELETON:
+                return 92;
+            case SPACER:
+                return 44;
+            case ROW:
+                return 78;
             default:
                 return 72;
         }
@@ -1377,6 +1556,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             case BUTTON:
                 return 48;
             case INPUT:
+            case TEXT_AREA:
+            case SEARCH_BAR:
             case DROPDOWN:
                 return 56;
             case CARD:
@@ -1386,12 +1567,42 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             case TABS:
                 return 44;
             case CHECKBOX:
+            case RADIO_GROUP:
             case SWITCH:
                 return 48;
             case PROGRESS:
+            case SLIDER:
+            case STEPPER:
+            case MEDIA_PLAYER:
                 return 56;
             case DIVIDER:
+            case SPACER:
                 return 18;
+            case TOP_APP_BAR:
+            case BOTTOM_NAV:
+            case SNACKBAR:
+            case FAB:
+            case ICON_BUTTON:
+            case AVATAR:
+            case BADGE:
+            case CHIP:
+            case RATING:
+            case LOADING:
+                return 36;
+            case LIST_ITEM:
+            case SKELETON:
+                return 64;
+            case GRID_ITEM:
+            case MENU:
+            case DIALOG:
+            case MAP:
+            case CHART:
+            case QR_CODE:
+            case COLUMN:
+            case GRID:
+                return 80;
+            case ROW:
+                return 48;
             default:
                 return MIN_WIDGET_HEIGHT_DP;
         }
@@ -1495,6 +1706,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 return createButtonPreview(component, background, accent, padding, radius, selected);
             case INPUT:
                 return createInputPreview(component, background, accent, padding, radius, selected);
+            case TEXT_AREA:
+                return createTextAreaPreview(component, background, accent, padding, radius, selected);
+            case SEARCH_BAR:
+                return createSearchBarPreview(component, background, accent, padding, radius, selected);
             case CARD:
                 return createCardPreview(component, background, accent, padding, radius, selected);
             case IMAGE:
@@ -1505,10 +1720,62 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 return createDropdownPreview(component, background, accent, padding, radius, selected);
             case CHECKBOX:
                 return createCheckboxPreview(component, background, accent, padding, radius, selected);
+            case RADIO_GROUP:
+                return createRadioGroupPreview(component, background, accent, padding, radius, selected);
             case SWITCH:
                 return createSwitchPreview(component, background, accent, padding, radius, selected);
             case DIVIDER:
                 return createDividerPreview(component, background, accent, padding, radius, selected);
+            case SLIDER:
+                return createSliderPreview(component, background, accent, padding, radius, selected);
+            case TOP_APP_BAR:
+                return createTopAppBarPreview(component, background, accent, padding, radius, selected);
+            case BOTTOM_NAV:
+                return createBottomNavPreview(component, background, accent, padding, radius, selected);
+            case FAB:
+                return createFabPreview(component, background, accent, padding, radius, selected);
+            case ICON_BUTTON:
+                return createIconButtonPreview(component, background, accent, padding, radius, selected);
+            case AVATAR:
+                return createAvatarPreview(component, background, accent, padding, radius, selected);
+            case BADGE:
+                return createBadgePreview(component, background, accent, padding, radius, selected);
+            case CHIP:
+                return createChipPreview(component, background, accent, padding, radius, selected);
+            case LIST_ITEM:
+                return createListItemPreview(component, background, accent, padding, radius, selected);
+            case GRID_ITEM:
+                return createGridItemPreview(component, background, accent, padding, radius, selected);
+            case MENU:
+                return createMenuPreview(component, background, accent, padding, radius, selected);
+            case DIALOG:
+                return createDialogPreview(component, background, accent, padding, radius, selected);
+            case SNACKBAR:
+                return createSnackbarPreview(component, background, accent, padding, radius, selected);
+            case RATING:
+                return createRatingPreview(component, background, accent, padding, radius, selected);
+            case STEPPER:
+                return createStepperPreview(component, background, accent, padding, radius, selected);
+            case LOADING:
+                return createLoadingPreview(component, background, accent, padding, radius, selected);
+            case SKELETON:
+                return createSkeletonPreview(component, background, accent, padding, radius, selected);
+            case MAP:
+                return createMapPreview(component, background, accent, padding, radius, selected);
+            case CHART:
+                return createChartPreview(component, background, accent, padding, radius, selected);
+            case MEDIA_PLAYER:
+                return createMediaPlayerPreview(component, background, accent, padding, radius, selected);
+            case QR_CODE:
+                return createQrPreview(component, background, accent, padding, radius, selected);
+            case SPACER:
+                return createSpacerPreview(component, background, accent, padding, radius, selected);
+            case ROW:
+                return createLayoutPreview(component, background, accent, padding, radius, selected, LinearLayout.HORIZONTAL);
+            case COLUMN:
+                return createLayoutPreview(component, background, accent, padding, radius, selected, LinearLayout.VERTICAL);
+            case GRID:
+                return createGridLayoutPreview(component, background, accent, padding, radius, selected);
             case PROGRESS:
             default:
                 return createProgressPreview(component, background, accent, padding, radius, selected);
@@ -1599,6 +1866,30 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         layout.addView(editText, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
+        return layout;
+    }
+
+    private View createTextAreaPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        View view = createInputPreview(component, background, accent, padding, radius, selected);
+        if (view instanceof TextInputLayout) {
+            TextInputLayout layout = (TextInputLayout) view;
+            if (layout.getEditText() != null) {
+                layout.getEditText().setSingleLine(false);
+                layout.getEditText().setMinLines(3);
+                layout.getEditText().setGravity(Gravity.TOP | Gravity.START);
+            }
+        }
+        return view;
+    }
+
+    private View createSearchBarPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, padding, selected);
+        TextView icon = previewLabel("Search", accent, 12, true);
+        icon.setGravity(Gravity.CENTER);
+        TextView value = previewLabel(nonEmpty(component.getHelper(), component.getTitle()), adjustAlpha(accent, 0.72f), component.getTextSizeSp(), false);
+        value.setSingleLine(true);
+        layout.addView(icon, new LinearLayout.LayoutParams(dp(58), LinearLayout.LayoutParams.MATCH_PARENT));
+        layout.addView(value, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
         return layout;
     }
 
@@ -1734,6 +2025,24 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         return host;
     }
 
+    private View createRadioGroupPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, Math.max(dp(6), padding / 2), selected);
+        String[] options = splitItems(component.getHelper(), "Free, Pro, Team");
+        for (int i = 0; i < Math.min(options.length, 3); i++) {
+            LinearLayout option = new LinearLayout(this);
+            option.setGravity(Gravity.CENTER_VERTICAL);
+            option.setOrientation(LinearLayout.HORIZONTAL);
+            option.addView(radioDot(i == 0, accent), new LinearLayout.LayoutParams(dp(18), dp(18)));
+            TextView label = previewLabel(options[i], accent, Math.max(10, component.getTextSizeSp() - 1), false);
+            label.setSingleLine(true);
+            LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            labelParams.setMargins(dp(5), 0, dp(4), 0);
+            option.addView(label, labelParams);
+            layout.addView(option, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+        }
+        return layout;
+    }
+
     private View createSwitchPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
         FrameLayout host = controlHost(selected, Math.max(10, component.getCornerRadiusDp()));
         LinearLayout layout = new LinearLayout(this);
@@ -1799,6 +2108,454 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
         return host;
+    }
+
+    private View createSliderPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, Math.max(dp(8), padding / 2), selected);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        TextView label = previewLabel(component.getTitle(), accent, component.getTextSizeSp(), true);
+        TextView value = previewLabel(component.getHelper(), adjustAlpha(accent, 0.72f), Math.max(10, component.getTextSizeSp() - 2), false);
+        value.setGravity(Gravity.END);
+        LinearLayout titleRow = new LinearLayout(this);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        titleRow.addView(value, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        layout.addView(titleRow);
+        layout.addView(trackView(accent, parsePercent(component.getHelper(), 60)), new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(24)));
+        return layout;
+    }
+
+    private View createTopAppBarPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, Math.max(dp(8), padding / 2), selected);
+        TextView menu = previewLabel("Menu", accent, 11, true);
+        menu.setGravity(Gravity.CENTER);
+        TextView title = previewLabel(component.getTitle(), accent, component.getTextSizeSp(), true);
+        title.setSingleLine(true);
+        TextView actions = previewLabel("Search  User", accent, 11, false);
+        actions.setGravity(Gravity.CENTER);
+        layout.addView(menu, new LinearLayout.LayoutParams(dp(48), LinearLayout.LayoutParams.MATCH_PARENT));
+        layout.addView(title, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+        layout.addView(actions, new LinearLayout.LayoutParams(dp(92), LinearLayout.LayoutParams.MATCH_PARENT));
+        return layout;
+    }
+
+    private View createBottomNavPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, Math.max(dp(6), padding / 2), selected);
+        String[] items = splitItems(component.getTitle(), "Home, Search, Profile");
+        String activeItem = nonEmpty(component.getHelper(), items[0]);
+        for (String item : items) {
+            TextView label = previewLabel(item.trim(), item.trim().equalsIgnoreCase(activeItem) ? accent : adjustAlpha(accent, 0.55f), component.getTextSizeSp(), item.trim().equalsIgnoreCase(activeItem));
+            label.setGravity(Gravity.CENTER);
+            label.setSingleLine(true);
+            layout.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+        }
+        return layout;
+    }
+
+    private View createFabPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        FrameLayout host = controlHost(selected, 36);
+        TextView fab = previewLabel(nonEmpty(component.getTitle(), "+"), accent, component.getTextSizeSp(), true);
+        fab.setGravity(Gravity.CENTER);
+        fab.setBackground(ovalBackground(background, Color.TRANSPARENT, 0));
+        host.addView(fab, new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER));
+        return host;
+    }
+
+    private View createIconButtonPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        FrameLayout host = controlHost(selected, Math.max(12, component.getCornerRadiusDp()));
+        TextView icon = previewLabel(shortToken(component.getTitle()), accent, component.getTextSizeSp(), true);
+        icon.setGravity(Gravity.CENTER);
+        icon.setBackground(roundBackground(background, accent, radius, dp(1)));
+        host.addView(icon, new FrameLayout.LayoutParams(dp(52), dp(52), Gravity.CENTER));
+        return host;
+    }
+
+    private View createAvatarPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        FrameLayout host = controlHost(selected, 36);
+        TextView avatar = previewLabel(nonEmpty(component.getHelper(), initials(component.getTitle())), accent, component.getTextSizeSp(), true);
+        avatar.setGravity(Gravity.CENTER);
+        avatar.setBackground(ovalBackground(background, accent, dp(1)));
+        host.addView(avatar, new FrameLayout.LayoutParams(dp(58), dp(58), Gravity.CENTER));
+        return host;
+    }
+
+    private View createBadgePreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        FrameLayout host = controlHost(selected, 20);
+        TextView badge = previewLabel(nonEmpty(component.getHelper(), component.getTitle()), accent, component.getTextSizeSp(), true);
+        badge.setGravity(Gravity.CENTER);
+        badge.setPadding(dp(10), 0, dp(10), 0);
+        badge.setBackground(roundBackground(background, Color.TRANSPARENT, dp(20), 0));
+        host.addView(badge, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(34), Gravity.CENTER));
+        return host;
+    }
+
+    private View createChipPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        FrameLayout host = controlHost(selected, 20);
+        TextView chip = previewLabel(component.getTitle(), accent, component.getTextSizeSp(), component.isEmphasized());
+        chip.setGravity(Gravity.CENTER);
+        chip.setPadding(dp(14), 0, dp(14), 0);
+        chip.setBackground(roundBackground(background, accent, dp(20), dp(1)));
+        host.addView(chip, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(38), Gravity.CENTER));
+        return host;
+    }
+
+    private View createListItemPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, Math.max(dp(8), padding / 2), selected);
+        TextView avatar = previewLabel(shortToken(component.getTitle()), background, 13, true);
+        avatar.setGravity(Gravity.CENTER);
+        avatar.setBackground(ovalBackground(accent, Color.TRANSPARENT, 0));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setGravity(Gravity.CENTER_VERTICAL);
+        texts.addView(previewLabel(component.getTitle(), accent, component.getTextSizeSp(), true));
+        texts.addView(previewLabel(component.getHelper(), adjustAlpha(accent, 0.68f), Math.max(10, component.getTextSizeSp() - 3), false));
+        layout.addView(avatar, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+        textParams.setMargins(dp(10), 0, 0, 0);
+        layout.addView(texts, textParams);
+        return layout;
+    }
+
+    private View createGridItemPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, Math.max(dp(8), padding / 2), selected);
+        View image = new View(this);
+        image.setBackground(roundBackground(adjustAlpha(accent, 0.16f), accent, dp(12), dp(1)));
+        layout.addView(image, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        TextView title = previewLabel(component.getTitle(), accent, component.getTextSizeSp(), true);
+        title.setGravity(Gravity.CENTER);
+        layout.addView(title);
+        TextView helper = previewLabel(component.getHelper(), adjustAlpha(accent, 0.72f), Math.max(10, component.getTextSizeSp() - 2), false);
+        helper.setGravity(Gravity.CENTER);
+        layout.addView(helper);
+        return layout;
+    }
+
+    private View createMenuPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, Math.max(dp(8), padding / 2), selected);
+        for (String item : splitItems(component.getHelper(), "Edit, Share, Delete")) {
+            TextView label = previewLabel(item.trim(), accent, Math.max(12, component.getTextSizeSp() - 1), false);
+            label.setPadding(dp(6), dp(4), dp(6), dp(4));
+            layout.addView(label, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        }
+        return layout;
+    }
+
+    private View createDialogPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, Math.max(dp(10), padding / 2), selected);
+        layout.addView(previewLabel(component.getTitle(), accent, component.getTextSizeSp(), true));
+        TextView body = previewLabel(component.getHelper(), adjustAlpha(accent, 0.72f), Math.max(10, component.getTextSizeSp() - 4), false);
+        body.setPadding(0, dp(6), 0, dp(8));
+        layout.addView(body, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.END);
+        actions.addView(previewLabel("Cancel", accent, 12, true));
+        TextView ok = previewLabel("OK", accent, 12, true);
+        ok.setPadding(dp(16), 0, 0, 0);
+        actions.addView(ok);
+        layout.addView(actions);
+        return layout;
+    }
+
+    private View createSnackbarPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, Math.max(dp(10), padding / 2), selected);
+        layout.addView(previewLabel(component.getTitle(), accent, component.getTextSizeSp(), false), new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+        TextView action = previewLabel(component.getHelper(), accent, component.getTextSizeSp(), true);
+        action.setGravity(Gravity.CENTER);
+        layout.addView(action, new LinearLayout.LayoutParams(dp(70), LinearLayout.LayoutParams.MATCH_PARENT));
+        return layout;
+    }
+
+    private View createRatingPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, Math.max(dp(8), padding / 2), selected);
+        int rating = clamp(parsePercent(component.getHelper(), 4), 0, 5);
+        if (rating > 5) {
+            rating = 4;
+        }
+        TextView stars = previewLabel(ratingStars(rating), accent, component.getTextSizeSp(), true);
+        stars.setGravity(Gravity.CENTER);
+        layout.addView(stars, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
+        return layout;
+    }
+
+    private View createStepperPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, Math.max(dp(8), padding / 2), selected);
+        for (int i = 1; i <= 4; i++) {
+            TextView step = previewLabel(String.valueOf(i), i <= 2 ? background : accent, 12, true);
+            step.setGravity(Gravity.CENTER);
+            step.setBackground(ovalBackground(i <= 2 ? accent : Color.TRANSPARENT, accent, dp(1)));
+            LinearLayout.LayoutParams stepParams = new LinearLayout.LayoutParams(dp(26), dp(26));
+            stepParams.setMargins(0, 0, dp(6), 0);
+            layout.addView(step, stepParams);
+        }
+        TextView label = previewLabel(component.getHelper(), accent, Math.max(10, component.getTextSizeSp() - 1), false);
+        label.setSingleLine(true);
+        layout.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+        return layout;
+    }
+
+    private View createLoadingPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, Math.max(dp(8), padding / 2), selected);
+        ProgressBar progress = new ProgressBar(this);
+        progress.setIndeterminate(true);
+        progress.setIndeterminateTintList(ColorStateList.valueOf(accent));
+        layout.addView(progress, new LinearLayout.LayoutParams(dp(36), dp(36)));
+        TextView label = previewLabel(component.getTitle(), accent, component.getTextSizeSp(), false);
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+        labelParams.setMargins(dp(10), 0, 0, 0);
+        layout.addView(label, labelParams);
+        return layout;
+    }
+
+    private View createSkeletonPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, Math.max(dp(8), padding / 2), selected);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        for (int i = 0; i < 3; i++) {
+            View bar = new View(this);
+            bar.setBackground(roundBackground(adjustAlpha(accent, 0.22f), Color.TRANSPARENT, dp(8), 0));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(i == 2 ? dp(120) : LinearLayout.LayoutParams.MATCH_PARENT, dp(14));
+            params.setMargins(0, dp(4), 0, dp(4));
+            layout.addView(bar, params);
+        }
+        return layout;
+    }
+
+    private View createMapPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        FrameLayout host = new FrameLayout(this);
+        host.setPadding(padding / 2, padding / 2, padding / 2, padding / 2);
+        host.setBackground(roundBackground(background, selected ? ContextCompat.getColor(this, R.color.accent_cobalt) : accent, radius, dp(selected ? 2 : 1)));
+        TextView pin = previewLabel("PIN", accent, component.getTextSizeSp(), true);
+        pin.setGravity(Gravity.CENTER);
+        pin.setBackground(ovalBackground(adjustAlpha(accent, 0.16f), accent, dp(1)));
+        host.addView(pin, new FrameLayout.LayoutParams(dp(54), dp(54), Gravity.CENTER));
+        return host;
+    }
+
+    private View createChartPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, Math.max(dp(8), padding / 2), selected);
+        layout.setGravity(Gravity.BOTTOM);
+        LinearLayout bars = new LinearLayout(this);
+        bars.setGravity(Gravity.BOTTOM);
+        bars.setOrientation(LinearLayout.HORIZONTAL);
+        int[] heights = {34, 58, 42, 76};
+        for (int height : heights) {
+            View bar = new View(this);
+            bar.setBackground(roundBackground(accent, Color.TRANSPARENT, dp(6), 0));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(height), 1f);
+            params.setMargins(dp(4), 0, dp(4), 0);
+            bars.addView(bar, params);
+        }
+        layout.addView(previewLabel(component.getTitle(), accent, Math.max(10, component.getTextSizeSp() - 1), true));
+        layout.addView(bars, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        return layout;
+    }
+
+    private View createMediaPlayerPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = horizontalShell(background, accent, radius, Math.max(dp(8), padding / 2), selected);
+        TextView play = previewLabel(">", background, 18, true);
+        play.setGravity(Gravity.CENTER);
+        play.setBackground(ovalBackground(accent, Color.TRANSPARENT, 0));
+        layout.addView(play, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setGravity(Gravity.CENTER_VERTICAL);
+        body.addView(previewLabel(component.getTitle(), accent, component.getTextSizeSp(), true));
+        body.addView(trackView(accent, parsePercent(component.getHelper(), 32)), new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(18)));
+        body.addView(previewLabel(component.getHelper(), adjustAlpha(accent, 0.72f), 10, false));
+        LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+        bodyParams.setMargins(dp(10), 0, 0, 0);
+        layout.addView(body, bodyParams);
+        return layout;
+    }
+
+    private View createQrPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout grid = shellLayout(background, radius, Math.max(dp(6), padding / 2), selected);
+        grid.setGravity(Gravity.CENTER);
+        for (int row = 0; row < 5; row++) {
+            LinearLayout line = new LinearLayout(this);
+            line.setGravity(Gravity.CENTER);
+            for (int col = 0; col < 5; col++) {
+                View cell = new View(this);
+                boolean filled = row == 0 || col == 0 || row == 4 || col == 4 || row == col || (row + col == 4);
+                cell.setBackgroundColor(filled ? accent : background);
+                LinearLayout.LayoutParams cellParams = new LinearLayout.LayoutParams(dp(12), dp(12));
+                cellParams.setMargins(dp(1), dp(1), dp(1), dp(1));
+                line.addView(cell, cellParams);
+            }
+            grid.addView(line);
+        }
+        return grid;
+    }
+
+    private View createSpacerPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        FrameLayout host = controlHost(selected, Math.max(4, component.getCornerRadiusDp()));
+        View line = new View(this);
+        line.setBackgroundColor(adjustAlpha(accent, 0.45f));
+        host.addView(line, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(2), Gravity.CENTER));
+        return host;
+    }
+
+    private View createLayoutPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected, int orientation) {
+        LinearLayout layout = shellLayout(background, radius, Math.max(dp(8), padding / 2), selected);
+        layout.setOrientation(orientation);
+        layout.setGravity(Gravity.CENTER);
+        String[] items = splitItems(component.getHelper(), "Item A, Item B");
+        for (String item : items) {
+            TextView box = previewLabel(item.trim(), accent, Math.max(10, component.getTextSizeSp() - 1), false);
+            box.setGravity(Gravity.CENTER);
+            box.setBackground(roundBackground(adjustAlpha(accent, 0.12f), accent, dp(10), dp(1)));
+            LinearLayout.LayoutParams params = orientation == LinearLayout.HORIZONTAL
+                    ? new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+                    : new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
+            params.setMargins(dp(4), dp(4), dp(4), dp(4));
+            layout.addView(box, params);
+        }
+        return layout;
+    }
+
+    private View createGridLayoutPreview(UiComponent component, int background, int accent, int padding, int radius, boolean selected) {
+        LinearLayout layout = shellLayout(background, radius, Math.max(dp(8), padding / 2), selected);
+        for (int row = 0; row < 2; row++) {
+            LinearLayout line = new LinearLayout(this);
+            line.setOrientation(LinearLayout.HORIZONTAL);
+            for (int col = 0; col < 2; col++) {
+                TextView cell = previewLabel(row + "," + col, accent, 10, false);
+                cell.setGravity(Gravity.CENTER);
+                cell.setBackground(roundBackground(adjustAlpha(accent, 0.12f), accent, dp(10), dp(1)));
+                LinearLayout.LayoutParams cellParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+                cellParams.setMargins(dp(4), dp(4), dp(4), dp(4));
+                line.addView(cell, cellParams);
+            }
+            layout.addView(line, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        }
+        return layout;
+    }
+
+    private LinearLayout horizontalShell(int background, int accent, int radius, int padding, boolean selected) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        layout.setPadding(padding, padding / 2, padding, padding / 2);
+        layout.setBackground(roundBackground(
+                background,
+                selected ? ContextCompat.getColor(this, R.color.accent_cobalt) : accent,
+                radius,
+                dp(selected ? 2 : 1)));
+        return layout;
+    }
+
+    private TextView previewLabel(String text, int color, int textSizeSp, boolean bold) {
+        TextView label = new TextView(this);
+        label.setText(text == null ? "" : text);
+        label.setTextColor(color);
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp);
+        label.setGravity(Gravity.CENTER_VERTICAL);
+        label.setTypeface(bold ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        return label;
+    }
+
+    private GradientDrawable roundBackground(int color, int strokeColor, int radius, int strokeWidth) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(radius);
+        if (strokeWidth > 0) {
+            drawable.setStroke(strokeWidth, strokeColor);
+        }
+        return drawable;
+    }
+
+    private GradientDrawable ovalBackground(int color, int strokeColor, int strokeWidth) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.OVAL);
+        drawable.setColor(color);
+        if (strokeWidth > 0) {
+            drawable.setStroke(strokeWidth, strokeColor);
+        }
+        return drawable;
+    }
+
+    private View radioDot(boolean checked, int accent) {
+        FrameLayout dot = new FrameLayout(this);
+        dot.setBackground(ovalBackground(Color.TRANSPARENT, accent, dp(2)));
+        if (checked) {
+            View center = new View(this);
+            center.setBackground(ovalBackground(accent, Color.TRANSPARENT, 0));
+            dot.addView(center, new FrameLayout.LayoutParams(dp(8), dp(8), Gravity.CENTER));
+        }
+        return dot;
+    }
+
+    private View trackView(int accent, int progressPercent) {
+        FrameLayout track = new FrameLayout(this);
+        View base = new View(this);
+        base.setBackground(roundBackground(adjustAlpha(accent, 0.22f), Color.TRANSPARENT, dp(5), 0));
+        FrameLayout.LayoutParams baseParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                dp(5),
+                Gravity.CENTER);
+        track.addView(base, baseParams);
+
+        View active = new View(this);
+        active.setBackground(roundBackground(accent, Color.TRANSPARENT, dp(5), 0));
+        FrameLayout.LayoutParams activeParams = new FrameLayout.LayoutParams(
+                Math.max(dp(24), Math.round(canvasWidthDp() * (clamp(progressPercent, 0, 100) / 100f) * 0.45f)),
+                dp(5),
+                Gravity.CENTER_VERTICAL | Gravity.START);
+        track.addView(active, activeParams);
+
+        View thumb = new View(this);
+        thumb.setBackground(ovalBackground(accent, Color.TRANSPARENT, 0));
+        FrameLayout.LayoutParams thumbParams = new FrameLayout.LayoutParams(
+                dp(14),
+                dp(14),
+                Gravity.CENTER_VERTICAL | Gravity.START);
+        thumbParams.leftMargin = Math.max(0, activeParams.width - dp(7));
+        track.addView(thumb, thumbParams);
+        return track;
+    }
+
+    private String[] splitItems(String value, String fallback) {
+        String source = value == null || value.trim().isEmpty() ? fallback : value;
+        String[] raw = source.split(",");
+        List<String> items = new ArrayList<>();
+        for (String item : raw) {
+            String trimmed = item.trim();
+            if (!trimmed.isEmpty()) {
+                items.add(trimmed);
+            }
+        }
+        return items.isEmpty() ? new String[]{"Item"} : items.toArray(new String[0]);
+    }
+
+    private String shortToken(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return "UI";
+        }
+        String trimmed = text.trim();
+        return trimmed.length() <= 2 ? trimmed.toUpperCase(Locale.US) : trimmed.substring(0, 1).toUpperCase(Locale.US);
+    }
+
+    private String initials(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return "UI";
+        }
+        String[] parts = text.trim().split("\\s+");
+        if (parts.length == 1) {
+            return shortToken(parts[0]);
+        }
+        return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase(Locale.US);
+    }
+
+    private String ratingStars(int rating) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= 5; i++) {
+            if (i > 1) {
+                builder.append(' ');
+            }
+            builder.append(i <= rating ? '*' : '-');
+        }
+        return builder.toString();
     }
 
     private FrameLayout controlHost(boolean selected, int radiusDp) {

@@ -15,7 +15,7 @@
     <string name="toolbar_about">About</string>
     <string name="dark_skin">Dark skin</string>
     <string name="palette_title">UI Objects</string>
-    <string name="palette_subtitle">Long-press a block, drag it onto the phone, and drop it where the screen should place it.</string>
+    <string name="palette_subtitle">Expand a group, long-press an object, drag it onto the phone, and drop it where the screen should place it.</string>
     <string name="add_header">Header</string>
     <string name="add_text">Text</string>
     <string name="add_button">Button</string>
@@ -88,7 +88,7 @@
     <string name="export_failed">Export failed</string>
     <string name="no_selection">No component selected</string>
     <string name="drag_here">Drag components here</string>
-    <string name="drag_palette_toast">Long-press a palette block and drop it on the phone preview.</string>
+    <string name="drag_palette_toast">Expand a group, long-press an object, and drop it on Live Preview.</string>
     <string name="dp_value">%1$ddp</string>
     <string name="percent_value">%1$d%%</string>
     <string name="sp_value">%1$dsp</string>
@@ -96,13 +96,13 @@
     <string name="drag_short">Drag in preview</string>
     <string name="delete_short">Delete</string>
     <string name="help_overview">Start from a template or a blank design, then drag UI Objects into Live Preview. Save/load projects locally or export JSON.</string>
-    <string name="help_palette">Long-press a UI Object and drag it into Live Preview. Objects render as their real control shapes on the canvas.</string>
+    <string name="help_palette">Tap a group to expand or collapse it. Long-press a UI Object and drag it into Live Preview.</string>
     <string name="help_templates">Choose a real-life template, or tap Start new for a blank canvas. UI Objects are directly below this section.</string>
     <string name="help_preview">Drop UI Objects anywhere on the canvas. Tap to inspect, drag to move, or long-press to show resize handles.</string>
     <string name="help_layers">Tap a layer to select it. Delete removes the selected layer.</string>
     <string name="help_inspector">Tap a widget or layer to open Inspector. Edit text, size, spacing, alignment, style, and colors. Color fields show swatches and include Custom color.</string>
     <string name="help_screen_title">How to use UI Forge</string>
-    <string name="help_screen_body">1. Enter the project name at the top. This is the name used when saving the design.\n\n2. Use Dark skin to switch the builder interface between light and dark styles.\n\n3. In Templates, choose a real-life starting point or tap Start new for a blank design.\n\n4. In UI Objects, long-press an object type, drag it into Live Preview, and drop it anywhere on the screen canvas.\n\n5. Objects on the canvas are drawn as real UI controls: buttons, inputs, dropdowns, tabs, checkboxes, switches, dividers, progress bars, cards, images, headers, and text.\n\n6. Move an object by dragging it directly on the canvas. Placement is free, not locked to rows.\n\n7. Resize an object by long-pressing it. Drag side handles to change width or height, or corner handles to resize both.\n\n8. Tap an object to open Inspector. Use the &gt;&gt; button to close Inspector.\n\n9. Inspector edits title, supporting text, width, height, text size, padding, corner radius, alignment, full-width mode, and emphasized style.\n\n10. Background and accent color fields show color swatches. Choose an existing color or use Custom color for RGB sliders and #RRGGBB hex input.\n\n11. Layers lets you select or delete objects from a list when the canvas is crowded.\n\n12. Save stores the project locally on this device. Load opens saved projects. Export copies the design as JSON.\n\n13. If something fails, send Downloads/uidesignerFailLog.txt.</string>
+    <string name="help_screen_body">1. Enter the project name at the top. This is the name used when saving the design.\n\n2. Use Dark skin to switch the builder interface between light and dark styles.\n\n3. In Templates, choose a real-life starting point or tap Start new for a blank design.\n\n4. UI Objects are grouped by purpose. Tap a group header to expand or collapse it.\n\n5. Long-press an object, drag it into Live Preview, and drop it anywhere on the screen canvas.\n\n6. Objects on the canvas are drawn as real UI controls, including buttons, text fields, text areas, search bars, tabs, dropdowns, checkboxes, radio groups, switches, sliders, navigation bars, FABs, chips, lists, dialogs, snackbars, ratings, loaders, maps, charts, media players, QR codes, and layout containers.\n\n7. Move an object by dragging it directly on the canvas. Placement is free, not locked to rows.\n\n8. Resize an object by long-pressing it. Drag side handles to change width or height, or corner handles to resize both.\n\n9. Tap an object to open Inspector. Use the &gt;&gt; button to close Inspector.\n\n10. Inspector edits title, supporting text, width, height, text size, padding, corner radius, alignment, full-width mode, and emphasized style.\n\n11. Background and accent color fields show color swatches. Choose an existing color or use Custom color for RGB sliders and #RRGGBB hex input.\n\n12. Layers lets you select or delete objects from a list when the canvas is crowded.\n\n13. Save stores the project locally on this device. Load opens saved projects. Export copies the design as JSON.\n\n14. If something fails, send Downloads/uidesignerFailLog.txt.</string>
     <string name="about_title">About Us</string>
     <string name="about_developer">Developer: Andrei Efremushkin</string>
     <string name="about_version">Version: %1$s (%2$d), %3$s build</string>
