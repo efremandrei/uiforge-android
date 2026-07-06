@@ -2942,12 +2942,57 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private void showHelpScreen() {
         ScrollView scrollView = new ScrollView(this);
-        scrollView.addView(dialogText(getString(R.string.help_screen_body)));
+        LinearLayout content = dialogColumn();
+        content.setPadding(dp(4), dp(6), dp(4), dp(4));
+        addHelpSection(content, R.string.help_quick_title, R.string.help_quick_body, true);
+        addHelpSection(content, R.string.help_header_title, R.string.help_header_body, false);
+        addHelpSection(content, R.string.help_build_title, R.string.help_build_body, false);
+        addHelpSection(content, R.string.help_canvas_title, R.string.help_canvas_body, false);
+        addHelpSection(content, R.string.help_inspect_title, R.string.help_inspect_body, false);
+        addHelpSection(content, R.string.help_export_title, R.string.help_export_body, false);
+        scrollView.addView(content);
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.help_screen_title)
                 .setView(scrollView)
                 .setPositiveButton(R.string.close_label, null)
                 .show();
+    }
+
+    private void addHelpSection(LinearLayout parent, int titleResId, int bodyResId, boolean emphasized) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(ContextCompat.getColor(this,
+                emphasized ? R.color.surface_selected : R.color.surface_primary));
+        background.setCornerRadius(dp(18));
+        background.setStroke(dp(emphasized ? 2 : 1), ContextCompat.getColor(this,
+                emphasized ? R.color.accent_cobalt : R.color.stroke_soft));
+        card.setBackground(background);
+
+        TextView title = new TextView(this);
+        title.setText(titleResId);
+        title.setTextColor(ContextCompat.getColor(this, emphasized ? R.color.accent_cobalt : R.color.text_strong));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        card.addView(title);
+
+        TextView body = new TextView(this);
+        body.setText(bodyResId);
+        body.setTextColor(ContextCompat.getColor(this, R.color.text_soft));
+        body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        body.setLineSpacing(dp(2), 1.0f);
+        LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        bodyParams.setMargins(0, dp(6), 0, 0);
+        card.addView(body, bodyParams);
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        cardParams.setMargins(0, 0, 0, dp(10));
+        parent.addView(card, cardParams);
     }
 
     private void showAboutDialog() {
