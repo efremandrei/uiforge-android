@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">UI Forge</string>
+    <string name="ui_badge">UI</string>
     <string name="app_banner_description">UI Forge banner</string>
     <string name="toolbar_subtitle"></string>
     <string name="hero_title">PROJECT NAME</string>
@@ -11,6 +12,23 @@
     <string name="export_json">Export</string>
     <string name="help_icon">?</string>
     <string name="close_drawer">&gt;&gt;</string>
+    <string name="more_menu">...</string>
+    <string name="mode_build">Build</string>
+    <string name="mode_inspect">Inspect</string>
+    <string name="preview_action">Preview</string>
+    <string name="xml_export">XML</string>
+    <string name="load_short">Load</string>
+    <string name="add_components_title">Add components</string>
+    <string name="add_components_subtitle">Swipe up for palette, templates, and recent blocks.</string>
+    <string name="open_label">Open</string>
+    <string name="add_object_title">Add object</string>
+    <string name="add_object_subtitle">Search or pick from focused groups.</string>
+    <string name="search_components">Search components</string>
+    <string name="start_new_short">New</string>
+    <string name="nav_build">Build</string>
+    <string name="nav_layers">Layers</string>
+    <string name="nav_inspect">Inspect</string>
+    <string name="nav_export">Export</string>
     <string name="toolbar_help">Help</string>
     <string name="toolbar_about">About</string>
     <string name="dark_skin">Dark skin</string>
