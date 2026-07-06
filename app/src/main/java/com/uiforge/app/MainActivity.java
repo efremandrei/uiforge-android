@@ -85,6 +85,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -118,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private static final int CANVAS_HEIGHT_DP = 640;
     private static final int MIN_WIDGET_WIDTH_DP = 48;
     private static final int MIN_WIDGET_HEIGHT_DP = 24;
+    private static final int MAX_LOG_VIEW_CHARS = 120_000;
 
     private ActivityMainBinding binding;
     private final List<UiComponent> components = new ArrayList<>();
@@ -2926,7 +2928,19 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 getString(R.string.about_github_label),
                 getString(R.string.about_github_url),
                 getString(R.string.about_github_url)));
-        addVerticalSpace(card, 48);
+        addVerticalSpace(card, 34);
+
+        MaterialButton logsButton = new MaterialButton(this);
+        logsButton.setText(getString(R.string.about_logs_button));
+        logsButton.setTextColor(Color.WHITE);
+        logsButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        logsButton.setAllCaps(false);
+        logsButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#2A9D8F")));
+        logsButton.setCornerRadius(dp(16));
+        card.addView(logsButton, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(52)));
+        addVerticalSpace(card, 20);
 
         MaterialButton closeButton = new MaterialButton(this, null, com.google.android.material.R.attr.borderlessButtonStyle);
         closeButton.setText(getString(R.string.close_label).toUpperCase(Locale.US));
@@ -2943,6 +2957,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setView(card)
                 .create();
+        logsButton.setOnClickListener(v -> showLogViewerDialog());
         closeButton.setOnClickListener(v -> dialog.dismiss());
         dialog.setOnShowListener(dialogInterface -> {
             Window window = dialog.getWindow();
@@ -2955,6 +2970,31 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             }
         });
         dialog.show();
+    }
+
+    private void showLogViewerDialog() {
+        logDebug("About log viewer opened");
+        try {
+            String logs = readDownloadsLogText();
+            if (logs == null || logs.trim().isEmpty()) {
+                logs = getString(R.string.logs_empty, FILE_LOG_NAME);
+            }
+            final String payload = logs;
+            TextView logText = dialogText(payload);
+            logText.setTypeface(Typeface.MONOSPACE);
+            logText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            ScrollView scrollView = new ScrollView(this);
+            scrollView.addView(logText);
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.logs_title)
+                    .setView(scrollView)
+                    .setPositiveButton(R.string.copy_logs, (dialog, which) -> copyToClipboard(payload))
+                    .setNegativeButton(R.string.close_label, null)
+                    .show();
+        } catch (IOException | SecurityException e) {
+            logError("Could not read Downloads/" + FILE_LOG_NAME, e);
+            Toast.makeText(this, R.string.logs_read_failed, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private String getAppVersionName() {
@@ -3338,6 +3378,53 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private int pxToDp(float value) {
         return Math.round(value / getResources().getDisplayMetrics().density);
+    }
+
+    private String readDownloadsLogText() throws IOException {
+        try (InputStream stream = openDownloadsLogInputStream()) {
+            if (stream == null) {
+                return null;
+            }
+            return readTail(stream, MAX_LOG_VIEW_CHARS);
+        }
+    }
+
+    private InputStream openDownloadsLogInputStream() throws IOException {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            Uri logUri = findExistingDownloadsLogUri();
+            if (logUri == null) {
+                return null;
+            }
+            InputStream stream = getContentResolver().openInputStream(logUri);
+            if (stream == null) {
+                throw new IOException("Could not open MediaStore input stream");
+            }
+            return stream;
+        }
+        File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File logFile = new File(downloads, FILE_LOG_NAME);
+        if (!logFile.exists()) {
+            return null;
+        }
+        return new FileInputStream(logFile);
+    }
+
+    private String readTail(InputStream stream, int maxChars) throws IOException {
+        StringBuilder builder = new StringBuilder();
+        byte[] buffer = new byte[4096];
+        boolean truncated = false;
+        int read;
+        while ((read = stream.read(buffer)) != -1) {
+            builder.append(new String(buffer, 0, read, StandardCharsets.UTF_8));
+            if (builder.length() > maxChars) {
+                builder.delete(0, builder.length() - maxChars);
+                truncated = true;
+            }
+        }
+        if (truncated) {
+            return getString(R.string.logs_truncated, maxChars) + "\n\n" + builder;
+        }
+        return builder.toString();
     }
 
     private void logDebug(String message) {

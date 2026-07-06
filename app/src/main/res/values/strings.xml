@@ -113,4 +113,10 @@
     <string name="about_email">andrei.efr@gmail.com</string>
     <string name="about_github_label">GitHub: </string>
     <string name="about_github_url">https://github.com/efremandrei/uiforge-android</string>
+    <string name="about_logs_button">Read logs</string>
+    <string name="logs_title">App logs</string>
+    <string name="logs_empty">No log file found yet. When the app writes logs, they appear in Downloads/%1$s.</string>
+    <string name="logs_read_failed">Could not read the log file</string>
+    <string name="logs_truncated">Showing the last %1$d characters.</string>
+    <string name="copy_logs">Copy logs</string>
 </resources>
