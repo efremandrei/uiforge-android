@@ -3013,11 +3013,6 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         addVerticalSpace(card, 56);
         card.addView(aboutText(getString(R.string.about_developer), 19, false));
         addVerticalSpace(card, 28);
-        card.addView(aboutText(
-                getString(R.string.about_version, getAppVersionName(), getAppVersionCode(), getBuildTypeName()),
-                19,
-                false));
-        addVerticalSpace(card, 28);
         card.addView(aboutLinkText(
                 getString(R.string.about_email_label),
                 getString(R.string.about_email),
@@ -3027,6 +3022,11 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 getString(R.string.about_github_label),
                 getString(R.string.about_github_url),
                 getString(R.string.about_github_url)));
+        addVerticalSpace(card, 28);
+        card.addView(aboutText(
+                getString(R.string.about_version, getAppVersionName(), getAppVersionCode()),
+                19,
+                false));
         addVerticalSpace(card, 34);
 
         MaterialButton logsButton = new MaterialButton(this);
