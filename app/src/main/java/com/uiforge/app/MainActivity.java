@@ -149,6 +149,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AppUpdateChecker.checkDaily(this);
         installCrashLogger();
         logDebug("onCreate start savedState=" + (savedInstanceState != null));
         applySavedSkinMode();
@@ -3039,6 +3040,18 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         card.addView(logsButton, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(52)));
+        addVerticalSpace(card, 12);
+
+        MaterialButton updateButton = new MaterialButton(this);
+        updateButton.setText(getString(R.string.about_check_updates_button));
+        updateButton.setTextColor(Color.WHITE);
+        updateButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        updateButton.setAllCaps(false);
+        updateButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#3FA35B")));
+        updateButton.setCornerRadius(dp(16));
+        card.addView(updateButton, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(52)));
         addVerticalSpace(card, 20);
 
         MaterialButton closeButton = new MaterialButton(this, null, com.google.android.material.R.attr.borderlessButtonStyle);
@@ -3057,6 +3070,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 .setView(card)
                 .create();
         logsButton.setOnClickListener(v -> showLogViewerDialog());
+        updateButton.setOnClickListener(v -> AppUpdateChecker.checkNow(this));
         closeButton.setOnClickListener(v -> dialog.dismiss());
         dialog.setOnShowListener(dialogInterface -> {
             Window window = dialog.getWindow();
