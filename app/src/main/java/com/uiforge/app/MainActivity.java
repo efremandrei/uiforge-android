@@ -103,13 +103,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements LayerAdapter.LayerActionListener {
-    private enum BottomMode {
-        BUILD,
-        PALETTE,
-        LAYERS,
-        INSPECT
-    }
-
     private static final String LOG_TAG = "UIForge";
     private static final String FILE_LOG_NAME = "uidesignerFailLog.txt";
     private static final String FILE_LOG_PREFS = "uiforge_file_log";
@@ -136,7 +129,6 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private LayerAdapter layerAdapter;
     private PopupWindow inspectorPopup;
     private final Map<String, Boolean> paletteGroupsExpanded = new LinkedHashMap<>();
-    private BottomMode bottomMode = BottomMode.BUILD;
     private boolean bindingInspector;
     private boolean dragInProgress;
     private boolean resizeHandlesVisible;
@@ -205,7 +197,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         }
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
         controller.setAppearanceLightStatusBars(false);
-        controller.setAppearanceLightNavigationBars(false);
+        controller.setAppearanceLightNavigationBars(true);
         logDebug("Configured system bars: black status bar, edgeToEdgeScrim=true sdk=" + Build.VERSION.SDK_INT);
     }
 
@@ -237,22 +229,11 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void setupToolbar() {
         binding.toolbar.setTitle(null);
         binding.toolbar.setSubtitle(null);
-        binding.headerModeButton.setOnClickListener(v -> showBottomMode(
-                bottomMode == BottomMode.INSPECT ? BottomMode.BUILD : BottomMode.INSPECT));
-        binding.headerMenuButton.setOnClickListener(v -> showAboutDialog());
+        binding.bottomHelpButton.setOnClickListener(v -> showHelpScreen());
+        binding.bottomAboutButton.setOnClickListener(v -> showAboutDialog());
         binding.saveProjectButton.setOnClickListener(v -> showSaveProjectDialog());
         binding.loadProjectButton.setOnClickListener(v -> showLoadProjectDialog());
         binding.exportButton.setOnClickListener(v -> showExportDialog());
-        binding.previewActionButton.setOnClickListener(v -> {
-            showBottomMode(BottomMode.BUILD);
-            binding.mainScroll.smoothScrollTo(0, 0);
-        });
-        binding.openComponentsButton.setOnClickListener(v -> showBottomMode(BottomMode.PALETTE));
-        binding.bottomHelpButton.setOnClickListener(v -> showBottomMode(BottomMode.BUILD));
-        binding.bottomLayersButton.setOnClickListener(v -> showBottomMode(BottomMode.LAYERS));
-        binding.bottomInspectButton.setOnClickListener(v -> showBottomMode(BottomMode.INSPECT));
-        binding.bottomAboutButton.setOnClickListener(v -> showExportDialog());
-        showBottomMode(BottomMode.BUILD);
     }
 
     private void setupDarkSkinSwitch() {
@@ -281,58 +262,18 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void setupInspectorDrawerHost() {
-        inspectorPopup = null;
-        binding.inspectorSheet.setVisibility(View.GONE);
-        binding.layersSheet.setVisibility(View.GONE);
-        binding.paletteSheet.setVisibility(View.GONE);
-        binding.addComponentsPanel.setVisibility(View.VISIBLE);
-    }
-
-    private void showBottomMode(BottomMode mode) {
-        bottomMode = mode;
-        binding.addComponentsPanel.setVisibility(mode == BottomMode.BUILD ? View.VISIBLE : View.GONE);
-        binding.paletteSheet.setVisibility(mode == BottomMode.PALETTE ? View.VISIBLE : View.GONE);
-        binding.layersSheet.setVisibility(mode == BottomMode.LAYERS ? View.VISIBLE : View.GONE);
-        binding.inspectorSheet.setVisibility(mode == BottomMode.INSPECT ? View.VISIBLE : View.GONE);
-        binding.headerModeButton.setText(mode == BottomMode.INSPECT
-                ? R.string.mode_inspect
-                : R.string.mode_build);
-        styleBottomNavigation(mode);
-        scrollToModeSheet(mode);
-    }
-
-    private void scrollToModeSheet(BottomMode mode) {
-        View target;
-        if (mode == BottomMode.PALETTE) {
-            target = binding.paletteSheet;
-        } else if (mode == BottomMode.LAYERS) {
-            target = binding.layersSheet;
-        } else if (mode == BottomMode.INSPECT) {
-            target = binding.inspectorSheet;
-        } else {
-            target = binding.addComponentsPanel;
+        ViewGroup parent = (ViewGroup) binding.inspectorDrawer.getParent();
+        if (parent != null) {
+            parent.removeView(binding.inspectorDrawer);
         }
-        binding.mainScroll.post(() -> binding.mainScroll.smoothScrollTo(0, Math.max(0, target.getTop() - dp(10))));
-    }
-
-    private void styleBottomNavigation(BottomMode mode) {
-        styleBottomNavigationButton(binding.bottomHelpButton, mode == BottomMode.BUILD || mode == BottomMode.PALETTE);
-        styleBottomNavigationButton(binding.bottomLayersButton, mode == BottomMode.LAYERS);
-        styleBottomNavigationButton(binding.bottomInspectButton, mode == BottomMode.INSPECT);
-        styleBottomNavigationButton(binding.bottomAboutButton, false);
-    }
-
-    private void styleBottomNavigationButton(MaterialButton button, boolean selected) {
-        int accent = ContextCompat.getColor(this, R.color.accent_cobalt);
-        int surface = ContextCompat.getColor(this, R.color.surface_primary);
-        int stroke = ContextCompat.getColor(this, R.color.stroke_soft);
-        int strong = ContextCompat.getColor(this, R.color.text_strong);
-        int onAccent = ContextCompat.getColor(this, R.color.hero_button_text);
-        button.setBackgroundTintList(ColorStateList.valueOf(selected ? accent : surface));
-        button.setStrokeColor(ColorStateList.valueOf(selected ? accent : stroke));
-        button.setStrokeWidth(dp(1));
-        button.setTextColor(selected ? onAccent : strong);
-        button.setIconTint(ColorStateList.valueOf(selected ? onAccent : strong));
+        inspectorPopup = new PopupWindow(
+                binding.inspectorDrawer,
+                inspectorDrawerWidth(),
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                true);
+        inspectorPopup.setOutsideTouchable(true);
+        inspectorPopup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        inspectorPopup.setElevation(dp(12));
     }
 
     private void setupHelpButtons() {
@@ -367,12 +308,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void styleProjectNameField() {
-        int input = Color.TRANSPARENT;
-        int text = ContextCompat.getColor(this, R.color.text_soft);
+        int input = ContextCompat.getColor(this, R.color.hero_input);
+        int text = ContextCompat.getColor(this, R.color.hero_text);
         int hint = ContextCompat.getColor(this, R.color.hero_text_soft);
         ColorStateList hintList = ColorStateList.valueOf(hint);
         binding.projectNameLayout.setBoxBackgroundColor(input);
-        binding.projectNameLayout.setBoxStrokeColor(Color.TRANSPARENT);
+        binding.projectNameLayout.setBoxStrokeColor(hint);
         binding.projectNameLayout.setDefaultHintTextColor(hintList);
         binding.projectNameLayout.setHintTextColor(hintList);
         binding.projectNameInput.setTextColor(text);
@@ -562,7 +503,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             boolean expanded = Boolean.TRUE.equals(paletteGroupsExpanded.get(groupName));
 
             MaterialButton header = new MaterialButton(this);
-            header.setText((expanded ? "Open: " : "Closed: ") + groupName);
+            header.setText((expanded ? "- " : "+ ") + groupName);
             header.setAllCaps(false);
             header.setGravity(Gravity.CENTER_VERTICAL);
             header.setTextColor(strong);
@@ -599,9 +540,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 button.setText(type.getLabel());
                 configurePaletteButton(button, type, surface, accent);
                 LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
-                        dp(132),
-                        dp(72));
-                buttonParams.setMargins(0, 0, dp(12), 0);
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        dp(48));
+                buttonParams.setMargins(0, 0, dp(8), 0);
                 row.addView(button, buttonParams);
             }
             scroll.addView(row, new HorizontalScrollView.LayoutParams(
@@ -616,16 +557,13 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void configurePaletteButton(MaterialButton button, UiComponentType type, int surface, int accent) {
-        button.setMinWidth(dp(132));
-        button.setMinHeight(dp(72));
+        button.setMinWidth(dp(92));
+        button.setMinHeight(dp(48));
         button.setSingleLine(true);
-        button.setTextColor(ContextCompat.getColor(this, R.color.text_strong));
-        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        button.setGravity(Gravity.CENTER_VERTICAL);
-        button.setStrokeWidth(dp(1));
+        button.setTextColor(accent);
+        button.setStrokeWidth(dp(2));
         button.setStrokeColor(ColorStateList.valueOf(accent));
-        button.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.surface_selected)));
-        button.setCornerRadius(dp(18));
+        button.setBackgroundTintList(ColorStateList.valueOf(surface));
         button.setInsetTop(0);
         button.setInsetBottom(0);
         button.setOnClickListener(v -> Toast.makeText(this, R.string.drag_palette_toast, Toast.LENGTH_SHORT).show());
@@ -1486,13 +1424,21 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void openInspectorDrawer() {
-        showBottomMode(BottomMode.INSPECT);
-        logDebug("Inspector sheet opened index=" + selectedIndex);
+        if (inspectorPopup == null || selectedIndex < 0 || selectedIndex >= components.size()) {
+            return;
+        }
+        inspectorPopup.setWidth(inspectorDrawerWidth());
+        if (!inspectorPopup.isShowing()) {
+            inspectorPopup.showAtLocation(binding.getRoot(), Gravity.END, 0, 0);
+            logDebug("Inspector drawer opened index=" + selectedIndex);
+        }
     }
 
     private void closeInspectorDrawer() {
-        showBottomMode(BottomMode.BUILD);
-        logDebug("Inspector sheet closed");
+        if (inspectorPopup != null && inspectorPopup.isShowing()) {
+            inspectorPopup.dismiss();
+            logDebug("Inspector drawer closed");
+        }
     }
 
     private void showResizeHandles(View touchedView, int index) {
