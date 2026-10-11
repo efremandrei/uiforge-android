@@ -1,4 +1,4 @@
-# Android UI review: build 48
+# Android UI review: builds 48-49
 
 The editor keeps the existing banner, grouped UI Objects, local project actions, and side Inspector. The review applies Android accessibility and layout guidance to those established interactions.
 
@@ -52,3 +52,11 @@ Device coverage is an Android 15/API 35 emulator. Android 16/Samsung hardware an
 - The crash buffer contained no UI Forge exception during the reviewed interactions.
 - APK package/version and v2 signature verified. The signing certificate matches build 47; an emulator upgrade install succeeded.
 - Final APK SHA256: `2264e18d4e636c74a041611f47f6ec3c36694618392f783a15a35f08c38f9d29`.
+
+## Build 49 follow-up
+
+The final dialog screenshot review exposed an overlapping floating hint in Save. Build 49 uses an outlined field with explicit padding, text/hint roles, and a flexible minimum height. The supplemental GitHub workflow also uses supported SDK packages instead of the retired `tools` package.
+
+Build 49 debug assembly, lint, metadata, signature, and upgrade installation passed. The 15 integration assertions above passed on build 48; build 49 repeats focused Save dialog checks in both skins and at 200% font size. Signing continuity is unchanged.
+
+Build 49 APK SHA256: `6da8b859fbb5a6bb2ffe5d8164b24fe95478245a42b08d67fd8e25b1b68ca358`.

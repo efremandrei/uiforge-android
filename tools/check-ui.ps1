@@ -79,7 +79,10 @@ Check ($helpUi.OuterXml.Contains('Go to canvas') -and !$helpUi.OuterXml.Contains
 Screenshot '03-help'
 Back
 Tap (Id 'bottomAboutButton')
-Find-Node "//node[@text='Version: 0.1.48/48']" | Out-Null
+$versionText = Get-Content "$PSScriptRoot\..\app\build.gradle" -Raw
+$versionName = [regex]::Match($versionText, 'versionName\s+"([^"\s]+)"').Groups[1].Value
+$versionCode = [regex]::Match($versionText, 'versionCode\s+(\d+)').Groups[1].Value
+Find-Node "//node[@text='Version: $versionName/$versionCode']" | Out-Null
 Screenshot '04-about'
 Tap "//node[@text='Read logs']"
 Find-Node "//node[@text='App logs']" | Out-Null

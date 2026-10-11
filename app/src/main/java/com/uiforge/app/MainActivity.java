@@ -2978,6 +2978,15 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
         TextInputLayout layout = new TextInputLayout(this);
         layout.setHint(getString(R.string.save_name_hint));
+        layout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
+        layout.setBoxBackgroundColor(ContextCompat.getColor(this, R.color.surface_primary));
+        layout.setBoxStrokeColor(ContextCompat.getColor(this, R.color.accent_cobalt));
+        layout.setDefaultHintTextColor(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.text_soft)));
+        input.setBackground(null);
+        input.setTextColor(ContextCompat.getColor(this, R.color.text_strong));
+        input.setSingleLine(true);
+        input.setMinHeight(dp(56));
+        input.setPadding(dp(16), dp(16), dp(16), dp(16));
         layout.addView(input, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
