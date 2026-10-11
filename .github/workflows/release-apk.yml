@@ -38,9 +38,9 @@ jobs:
         run: |
           if [ -f ./gradlew ]; then
             chmod +x ./gradlew
-            ./gradlew --no-daemon assembleDebug
+            ./gradlew --no-daemon assembleDebug lintDebug
           else
-            gradle --no-daemon assembleDebug
+            gradle --no-daemon assembleDebug lintDebug
           fi
 
       - name: Read app version
@@ -52,6 +52,7 @@ jobs:
           from pathlib import Path
 
           version_name = ""
+          version_code = ""
           for gradle_file in (Path("app/build.gradle"), Path("app/build.gradle.kts")):
               if not gradle_file.exists():
                   continue
@@ -63,6 +64,8 @@ jobs:
               )
               if match:
                   version_name = match.group(1)
+                  code_match = re.search(r'^\s*versionCode\s*(?:=|\s)\s*(\d+)', gradle_file.read_text(encoding="utf-8"), re.MULTILINE)
+                  version_code = code_match.group(1) if code_match else os.environ['GITHUB_RUN_NUMBER']
                   break
 
           if not version_name:
@@ -70,6 +73,7 @@ jobs:
 
           safe_version = re.sub(r"[^A-Za-z0-9._-]+", "-", version_name).strip("-")
           print(f"APP_VERSION={safe_version or '0.0.' + os.environ['GITHUB_RUN_NUMBER']}")
+          print(f"APP_BUILD={version_code or os.environ['GITHUB_RUN_NUMBER']}")
           PY
 
       - name: Prepare versioned downloadable APK
@@ -85,7 +89,7 @@ jobs:
             exit 1
           fi
 
-          versioned_apk="release/${repo_name}-v${APP_VERSION}-debug.apk"
+          versioned_apk="release/${repo_name}-v${APP_VERSION}-build-${APP_BUILD}-debug.apk"
           cp "$apk_path" "$versioned_apk"
 
           echo "APK_PATH=$versioned_apk" >> "$GITHUB_ENV"
@@ -98,8 +102,8 @@ jobs:
           body: |
             Automatically built debug APK from the latest default-branch commit.
 
-            APK file name includes the app version number.
+            APK file name includes the app version and build number. For in-place updates, use the separately published review release that preserves the existing signing certificate.
           artifacts: ${{ env.APK_PATH }}
           allowUpdates: true
           replacesArtifacts: true
-          makeLatest: true
+          makeLatest: false

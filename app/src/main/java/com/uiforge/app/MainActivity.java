@@ -1,5 +1,6 @@
 package com.uiforge.app;
 
+import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ContentResolver;
@@ -47,7 +48,6 @@ import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.Space;
 import android.widget.TextView;
@@ -60,6 +60,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.AppCompatEditText;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -127,7 +128,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private final ExecutorService fileLogExecutor = Executors.newSingleThreadExecutor();
     private final SimpleDateFormat fileLogDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
     private LayerAdapter layerAdapter;
-    private PopupWindow inspectorPopup;
+    private Dialog inspectorDialog;
+    private static final String STATE_PALETTE_GROUPS = "palette_groups";
+    private static final String STATE_BASELINE = "project_baseline";
+    private static final String STATE_PRESET = "active_preset";
+    private String projectBaseline = "";
+    private String activePreset = "";
     private final Map<String, Boolean> paletteGroupsExpanded = new LinkedHashMap<>();
     private boolean bindingInspector;
     private boolean dragInProgress;
@@ -137,6 +143,16 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private long lastMoveFileLogAtMs;
     private Uri cachedDownloadsLogUri;
     private Thread.UncaughtExceptionHandler previousUncaughtExceptionHandler;
+    private int dragScrollDelta;
+    private final Runnable dragAutoScroll = new Runnable() {
+        @Override
+        public void run() {
+            if (dragScrollDelta != 0 && binding != null) {
+                binding.workspaceScroll.scrollBy(0, dragScrollDelta);
+                binding.workspaceScroll.postDelayed(this, 16);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -177,6 +193,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     @Override
     protected void onDestroy() {
+        if (binding != null) {
+            binding.workspaceScroll.removeCallbacks(dragAutoScroll);
+        }
+        closeInspectorDrawer();
         logDebug("onDestroy finishing=" + isFinishing());
         fileLogExecutor.shutdown();
         super.onDestroy();
@@ -197,17 +217,22 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         }
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
         controller.setAppearanceLightStatusBars(false);
-        controller.setAppearanceLightNavigationBars(true);
+        controller.setAppearanceLightNavigationBars(!isDarkSkin());
         logDebug("Configured system bars: black status bar, edgeToEdgeScrim=true sdk=" + Build.VERSION.SDK_INT);
     }
 
     private void setupSystemBarInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (view, insets) -> {
-            int statusTop = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
-            int navigationBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-            binding.statusBarScrim.getLayoutParams().height = statusTop;
-            binding.statusBarScrim.requestLayout();
-            binding.getRoot().setPadding(0, 0, 0, navigationBottom);
+            androidx.core.graphics.Insets safe = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            int statusTop = safe.top;
+            int navigationBottom = safe.bottom;
+            if (binding.statusBarScrim.getLayoutParams().height != statusTop) {
+                binding.statusBarScrim.getLayoutParams().height = statusTop;
+                binding.statusBarScrim.requestLayout();
+            }
+            binding.getRoot().setPadding(safe.left, 0, safe.right,
+                    Math.max(navigationBottom, insets.getInsets(WindowInsetsCompat.Type.ime()).bottom));
             logDebug("Applied system insets statusTopPx=" + statusTop + " navBottomPx=" + navigationBottom);
             return insets;
         });
@@ -227,13 +252,28 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void setupToolbar() {
-        binding.toolbar.setTitle(null);
-        binding.toolbar.setSubtitle(null);
+        binding.goToCanvasButton.setOnClickListener(v -> scrollToCanvas());
         binding.bottomHelpButton.setOnClickListener(v -> showHelpScreen());
         binding.bottomAboutButton.setOnClickListener(v -> showAboutDialog());
         binding.saveProjectButton.setOnClickListener(v -> showSaveProjectDialog());
         binding.loadProjectButton.setOnClickListener(v -> showLoadProjectDialog());
         binding.exportButton.setOnClickListener(v -> showExportDialog());
+    }
+
+    private boolean isDarkSkin() {
+        return (getResources().getConfiguration().uiMode
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private void scrollToCanvas() {
+        binding.workspaceScroll.post(() -> {
+            android.graphics.Rect bounds = new android.graphics.Rect();
+            View headingRow = (View) binding.previewHeading.getParent();
+            headingRow.getDrawingRect(bounds);
+            binding.workspaceScroll.offsetDescendantRectToMyCoords(headingRow, bounds);
+            binding.workspaceScroll.smoothScrollBy(0, bounds.top - dp(8));
+        });
     }
 
     private void setupDarkSkinSwitch() {
@@ -266,14 +306,30 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         if (parent != null) {
             parent.removeView(binding.inspectorDrawer);
         }
-        inspectorPopup = new PopupWindow(
-                binding.inspectorDrawer,
-                inspectorDrawerWidth(),
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                true);
-        inspectorPopup.setOutsideTouchable(true);
-        inspectorPopup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        inspectorPopup.setElevation(dp(12));
+        FrameLayout host = new FrameLayout(this);
+        host.addView(binding.inspectorDrawer, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        inspectorDialog = new Dialog(this);
+        inspectorDialog.setContentView(host);
+        inspectorDialog.setCanceledOnTouchOutside(true);
+        Window window = inspectorDialog.getWindow();
+        if (window != null) {
+            WindowCompat.setDecorFitsSystemWindows(window, false);
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            window.setDimAmount(0.55f);
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+            WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, host);
+            controller.setAppearanceLightStatusBars(false);
+            controller.setAppearanceLightNavigationBars(!isDarkSkin());
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(host, (view, insets) -> {
+            androidx.core.graphics.Insets safe = insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            host.setPadding(0, safe.top, safe.right,
+                    Math.max(safe.bottom, insets.getInsets(WindowInsetsCompat.Type.ime()).bottom));
+            return insets;
+        });
     }
 
     private void setupHelpButtons() {
@@ -294,17 +350,24 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
     private void configureHelpButton(MaterialButton button, boolean onDarkBackground) {
         int color = ContextCompat.getColor(this, onDarkBackground ? R.color.hero_text : R.color.text_strong);
-        GradientDrawable circle = new GradientDrawable();
-        circle.setShape(GradientDrawable.OVAL);
-        circle.setColor(Color.TRANSPARENT);
-        circle.setStroke(dp(2), color);
-        button.setBackground(circle);
+        button.setBackgroundTintList(ColorStateList.valueOf(Color.TRANSPARENT));
+        button.setStrokeColor(ColorStateList.valueOf(color));
+        button.setStrokeWidth(dp(1));
+        button.setCornerRadius(dp(24));
         button.setTextColor(color);
-        button.setMinWidth(0);
-        button.setMinHeight(0);
+        button.setMinWidth(dp(48));
+        button.setMinHeight(dp(48));
         button.setInsetTop(0);
         button.setInsetBottom(0);
         button.setPadding(0, 0, 0, 0);
+        Map<MaterialButton, Integer> titles = new LinkedHashMap<>();
+        titles.put(binding.heroHelpButton, R.string.hero_title);
+        titles.put(binding.paletteHelpButton, R.string.palette_title);
+        titles.put(binding.templatesHelpButton, R.string.templates_title);
+        titles.put(binding.previewHelpButton, R.string.preview_title);
+        titles.put(binding.layersHelpButton, R.string.layers_title);
+        titles.put(binding.inspectorHelpButton, R.string.inspector_title);
+        button.setContentDescription(getString(R.string.help_for, getString(titles.get(button))));
     }
 
     private void styleProjectNameField() {
@@ -349,6 +412,15 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.opacityValueLabel.setTextColor(softText);
         binding.deleteButton.setTextColor(ColorStateList.valueOf(danger));
         binding.deleteButton.setStrokeColor(ColorStateList.valueOf(danger));
+        for (MaterialButton button : Arrays.asList(binding.alignStartButton,
+                binding.alignCenterButton, binding.alignEndButton)) {
+            button.setTextColor(new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{ContextCompat.getColor(this, R.color.on_accent), strong}));
+            button.setBackgroundTintList(new ColorStateList(
+                    new int[][]{new int[]{android.R.attr.state_checked}, new int[]{}},
+                    new int[]{accent, surface}));
+        }
         configureInspectorCloseButton();
     }
 
@@ -376,6 +448,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         if (view instanceof SwitchMaterial) {
             configureSwitchContrast((SwitchMaterial) view);
         }
+        if (view instanceof android.widget.SeekBar) {
+            view.setMinimumHeight(dp(48));
+        }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
@@ -387,14 +462,17 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void configureSwitchContrast(SwitchMaterial switchView) {
         int accent = ContextCompat.getColor(this, R.color.accent_cobalt);
         int soft = ContextCompat.getColor(this, R.color.text_soft);
-        int stroke = ContextCompat.getColor(this, R.color.stroke_soft);
+        int stroke = ContextCompat.getColor(this, R.color.switch_track_off);
+        int offThumb = ContextCompat.getColor(this, R.color.switch_thumb_off);
+        switchView.setUseMaterialThemeColors(false);
+        switchView.setMinHeight(dp(48));
         int[][] states = new int[][]{
                 new int[]{android.R.attr.state_enabled, android.R.attr.state_checked},
                 new int[]{-android.R.attr.state_enabled},
                 new int[]{}};
         switchView.setThumbTintList(new ColorStateList(
                 states,
-                new int[]{accent, adjustAlpha(soft, 0.55f), soft}));
+                new int[]{accent, adjustAlpha(soft, 0.55f), offThumb}));
         switchView.setTrackTintList(new ColorStateList(
                 states,
                 new int[]{adjustAlpha(accent, 0.46f), adjustAlpha(stroke, 0.55f), stroke}));
@@ -413,17 +491,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private int readableTextOn(int background) {
-        double red = linearizedColorChannel(Color.red(background) / 255d);
-        double green = linearizedColorChannel(Color.green(background) / 255d);
-        double blue = linearizedColorChannel(Color.blue(background) / 255d);
-        double luminance = (0.2126d * red) + (0.7152d * green) + (0.0722d * blue);
-        return luminance > 0.45d ? Color.parseColor("#08141C") : Color.WHITE;
-    }
-
-    private double linearizedColorChannel(double channel) {
-        return channel <= 0.03928d
-                ? channel / 12.92d
-                : Math.pow((channel + 0.055d) / 1.055d, 2.4d);
+        int dark = Color.parseColor("#08141C");
+        return ColorUtils.calculateContrast(dark, background) >= ColorUtils.calculateContrast(Color.WHITE, background)
+                ? dark : Color.WHITE;
     }
 
     private void setupLists() {
@@ -511,27 +581,27 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             header.setStrokeColor(ColorStateList.valueOf(accent));
             header.setStrokeWidth(dp(1));
             header.setCornerRadius(dp(14));
-            header.setMinHeight(dp(44));
+            header.setMinHeight(dp(48));
             header.setInsetTop(0);
             header.setInsetBottom(0);
-            header.setOnClickListener(v -> {
-                paletteGroupsExpanded.put(groupName, !Boolean.TRUE.equals(paletteGroupsExpanded.get(groupName)));
-                renderPaletteGroups();
-            });
             LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    dp(44));
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
             headerParams.setMargins(0, 0, 0, dp(8));
             binding.paletteGroupsContainer.addView(header, headerParams);
 
-            if (!expanded) {
-                continue;
-            }
-
             HorizontalScrollView scroll = new HorizontalScrollView(this);
-            scroll.setHorizontalScrollBarEnabled(false);
-            scroll.setFadingEdgeLength(dp(28));
-            scroll.setHorizontalFadingEdgeEnabled(true);
+            scroll.setHorizontalScrollBarEnabled(true);
+            scroll.setHorizontalFadingEdgeEnabled(false);
+            scroll.setVisibility(expanded ? View.VISIBLE : View.GONE);
+            ViewCompat.setStateDescription(header, getString(expanded ? R.string.expanded : R.string.collapsed));
+            header.setOnClickListener(v -> {
+                boolean nowExpanded = !Boolean.TRUE.equals(paletteGroupsExpanded.get(groupName));
+                paletteGroupsExpanded.put(groupName, nowExpanded);
+                header.setText((nowExpanded ? "- " : "+ ") + groupName);
+                ViewCompat.setStateDescription(header, getString(nowExpanded ? R.string.expanded : R.string.collapsed));
+                scroll.setVisibility(nowExpanded ? View.VISIBLE : View.GONE);
+            });
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setPadding(0, 0, 0, dp(8));
@@ -541,7 +611,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 configurePaletteButton(button, type, surface, accent);
                 LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.WRAP_CONTENT,
-                        dp(48));
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
                 buttonParams.setMargins(0, 0, dp(8), 0);
                 row.addView(button, buttonParams);
             }
@@ -560,13 +630,24 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         button.setMinWidth(dp(92));
         button.setMinHeight(dp(48));
         button.setSingleLine(true);
+        button.setAllCaps(false);
+        button.setCornerRadius(dp(16));
         button.setTextColor(accent);
         button.setStrokeWidth(dp(2));
         button.setStrokeColor(ColorStateList.valueOf(accent));
         button.setBackgroundTintList(ColorStateList.valueOf(surface));
         button.setInsetTop(0);
         button.setInsetBottom(0);
-        button.setOnClickListener(v -> Toast.makeText(this, R.string.drag_palette_toast, Toast.LENGTH_SHORT).show());
+        button.setContentDescription(getString(R.string.add_object_description, type.getLabel()));
+        button.setOnClickListener(v -> {
+            int nextY = 16;
+            for (UiComponent item : components) {
+                nextY = Math.max(nextY, item.getYdp() + resolveComponentHeightDp(item) + 12);
+            }
+            addPaletteComponentAt(type, dp(36), dp(Math.min(nextY, canvasHeightDp() - 100) + 24));
+            refreshAll();
+            scrollToCanvas();
+        });
         button.setOnLongClickListener(v -> startDrag(v, new DragPayload(type, -1)));
     }
 
@@ -584,9 +665,11 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 presets));
         binding.presetDropdownInput.setDropDownBackgroundDrawable(
                 ContextCompat.getDrawable(this, R.drawable.bg_dropdown_popup));
-        binding.presetDropdownInput.setOnItemClickListener((parent, view, position, id) ->
-                applyPreset((String) parent.getItemAtPosition(position)));
-        binding.startNewDesignButton.setOnClickListener(v -> startNewDesign());
+        binding.presetDropdownInput.setOnItemClickListener((parent, view, position, id) -> {
+            String preset = (String) parent.getItemAtPosition(position);
+            confirmProjectReplacement(() -> applyPreset(preset));
+        });
+        binding.startNewDesignButton.setOnClickListener(v -> confirmProjectReplacement(this::startNewDesign));
     }
 
     private void styleTemplateDropdown() {
@@ -619,6 +702,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             applyTemplate(createCommerceTemplate(), "Commerce Checkout");
         }
         binding.presetDropdownInput.setText(presetName, false);
+        activePreset = presetName;
     }
 
     private void startNewDesign() {
@@ -626,13 +710,73 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         components.clear();
         binding.projectNameInput.setText("Untitled Flow");
         binding.presetDropdownInput.setText("", false);
+        activePreset = "";
         selectedIndex = -1;
         resizeHandlesVisible = false;
         refreshAll();
+        markProjectClean();
+    }
+
+    private void markProjectClean() {
+        try {
+            projectBaseline = buildProjectJson().toString();
+        } catch (JSONException e) {
+            logError("Could not track saved project state", e);
+        }
+    }
+
+    private void confirmProjectReplacement(Runnable action) {
+        boolean modified = true;
+        try {
+            modified = !projectBaseline.equals(buildProjectJson().toString());
+        } catch (JSONException e) {
+            logError("Could not compare project state", e);
+        }
+        if (!modified) {
+            closeInspectorDrawer();
+            action.run();
+            return;
+        }
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.discard_changes_title)
+                .setMessage(R.string.discard_changes_message)
+                .setPositiveButton(R.string.discard_label, (dialog, which) -> {
+                    closeInspectorDrawer();
+                    action.run();
+                })
+                .setNegativeButton(R.string.keep_editing, (dialog, which) ->
+                        binding.presetDropdownInput.setText(activePreset, false))
+                .setOnCancelListener(dialog -> binding.presetDropdownInput.setText(activePreset, false))
+                .show();
     }
 
     private void setupPreviewCanvas() {
+        // Rebuild after the canvas is measured, never while Android measures its children.
+        binding.previewCanvas.addOnLayoutChangeListener((view, left, top, right, bottom,
+                oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft) {
+                view.post(this::refreshAll);
+            }
+        });
         binding.previewCanvas.setOnDragListener(this::handlePreviewCanvasDrag);
+        binding.workspaceScroll.setOnDragListener((view, event) -> {
+            if (!(event.getLocalState() instanceof DragPayload)
+                    || !((DragPayload) event.getLocalState()).isPaletteDrag()) {
+                return false;
+            }
+            if (event.getAction() == DragEvent.ACTION_DRAG_LOCATION) {
+                int edge = dp(64);
+                dragScrollDelta = event.getY() < edge ? -dp(8)
+                        : event.getY() > view.getHeight() - edge ? dp(8) : 0;
+                view.removeCallbacks(dragAutoScroll);
+                view.post(dragAutoScroll);
+            } else if (event.getAction() == DragEvent.ACTION_DRAG_ENDED
+                    || event.getAction() == DragEvent.ACTION_DRAG_EXITED) {
+                dragScrollDelta = 0;
+                view.removeCallbacks(dragAutoScroll);
+            }
+            return true;
+        });
     }
 
     private void wireDropdowns() {
@@ -847,7 +991,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 s -> updateSelected(component -> component.setHelper(s))));
         binding.fullWidthSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (!bindingInspector) {
-                updateSelected(component -> component.setFullWidth(isChecked));
+                updateSelected(component -> {
+                    component.setFullWidth(isChecked);
+                    if (isChecked) {
+                        component.setWidthDp(0);
+                    }
+                });
             }
         });
         binding.emphasisSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -858,12 +1007,12 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.widthSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
             @Override
             public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                int width = progress + 30;
-                binding.widthValueLabel.setText(getString(R.string.percent_value, width));
+                int width = progress + MIN_WIDGET_WIDTH_DP;
+                binding.widthValueLabel.setText(getString(R.string.dp_value, width));
                 if (fromUser) {
                     updateSelected(component -> {
                         component.setFullWidth(false);
-                        component.setWidthPercent(width);
+                        component.setWidthDp(width);
                     });
                 }
             }
@@ -871,7 +1020,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.heightSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
             @Override
             public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                int height = progress == 0 ? 0 : progress + 31;
+                UiComponent selected = getSelected();
+                int minimum = selected == null ? MIN_WIDGET_HEIGHT_DP : minComponentHeightDp(selected);
+                int height = progress == 0 ? 0 : progress + minimum - 1;
                 binding.heightValueLabel.setText(height == 0 ? getString(R.string.auto_value) : getString(R.string.dp_value, height));
                 if (fromUser) {
                     updateSelected(component -> component.setHeightDp(height));
@@ -891,18 +1042,18 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         binding.paddingSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
             @Override
             public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                binding.paddingValueLabel.setText(getString(R.string.dp_value, progress + 8));
+                binding.paddingValueLabel.setText(getString(R.string.dp_value, progress));
                 if (fromUser) {
-                    updateSelected(component -> component.setPaddingDp(progress + 8));
+                    updateSelected(component -> component.setPaddingDp(progress));
                 }
             }
         });
         binding.radiusSeekBar.setOnSeekBarChangeListener(new SimpleSeekBarListener() {
             @Override
             public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                binding.radiusValueLabel.setText(getString(R.string.dp_value, progress + 4));
+                binding.radiusValueLabel.setText(getString(R.string.dp_value, progress));
                 if (fromUser) {
-                    updateSelected(component -> component.setCornerRadiusDp(progress + 4));
+                    updateSelected(component -> component.setCornerRadiusDp(progress));
                 }
             }
         });
@@ -939,6 +1090,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         selectedIndex = components.isEmpty() ? -1 : 0;
         resizeHandlesVisible = false;
         refreshAll();
+        markProjectClean();
     }
 
     private List<UiComponent> createCommerceTemplate() {
@@ -1043,13 +1195,16 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             setColorInputValue(binding.accentColorInput, selected.getAccentColorName());
             binding.fullWidthSwitch.setChecked(selected.isFullWidth());
             binding.emphasisSwitch.setChecked(selected.isEmphasized());
-            binding.widthSeekBar.setProgress(selected.getWidthPercent() - 30);
-            binding.heightSeekBar.setProgress(selected.getHeightDp() == 0 ? 0 : selected.getHeightDp() - 31);
+            binding.widthSeekBar.setMax(Math.max(0, canvasWidthDp() - MIN_WIDGET_WIDTH_DP));
+            binding.widthSeekBar.setProgress(resolveComponentWidthDp(selected) - MIN_WIDGET_WIDTH_DP);
+            binding.heightSeekBar.setMax(canvasHeightDp() - minComponentHeightDp(selected) + 1);
+            binding.heightSeekBar.setProgress(selected.getHeightDp() == 0 ? 0
+                    : selected.getHeightDp() - minComponentHeightDp(selected) + 1);
             binding.textSizeSeekBar.setProgress(selected.getTextSizeSp() - 10);
-            binding.paddingSeekBar.setProgress(selected.getPaddingDp() - 8);
-            binding.radiusSeekBar.setProgress(selected.getCornerRadiusDp() - 4);
+            binding.paddingSeekBar.setProgress(selected.getPaddingDp());
+            binding.radiusSeekBar.setProgress(selected.getCornerRadiusDp());
             binding.opacitySeekBar.setProgress(selected.getOpacityPercent());
-            binding.widthValueLabel.setText(getString(R.string.percent_value, selected.getWidthPercent()));
+            binding.widthValueLabel.setText(getString(R.string.dp_value, resolveComponentWidthDp(selected)));
             binding.heightValueLabel.setText(selected.getHeightDp() == 0 ? getString(R.string.auto_value) : getString(R.string.dp_value, selected.getHeightDp()));
             binding.textSizeValueLabel.setText(getString(R.string.sp_value, selected.getTextSizeSp()));
             binding.paddingValueLabel.setText(getString(R.string.dp_value, selected.getPaddingDp()));
@@ -1093,14 +1248,21 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private void setColorInputValue(MaterialAutoCompleteTextView input, String colorName) {
         String safeValue = colorName == null ? "" : colorName;
         input.setText(safeValue, false);
-        if (safeValue.isEmpty()) {
-            input.setCompoundDrawables(null, null, null, null);
-            return;
+        View parent = input;
+        while (parent.getParent() instanceof View) {
+            parent = (View) parent.getParent();
+            if (parent instanceof TextInputLayout) {
+                TextInputLayout field = (TextInputLayout) parent;
+                field.setStartIconTintList(null);
+                field.setStartIconDrawable(safeValue.isEmpty() ? null
+                        : new android.graphics.drawable.InsetDrawable(
+                                colorSwatchBackground(colorFromName(safeValue)), dp(10)));
+                field.setStartIconCheckable(false);
+                field.setStartIconOnClickListener(null);
+                field.setStartIconContentDescription(safeValue);
+                break;
+            }
         }
-        Drawable swatch = colorSwatchBackground(colorFromName(safeValue));
-        swatch.setBounds(0, 0, dp(20), dp(20));
-        input.setCompoundDrawables(swatch, null, null, null);
-        input.setCompoundDrawablePadding(dp(10));
     }
 
     private void renderPreview() {
@@ -1121,9 +1283,19 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private FrameLayout createCanvasItemContainer(UiComponent component, int index) {
         FrameLayout container = new FrameLayout(this);
         container.setTag(Integer.valueOf(index));
+        container.setFocusable(true);
+        container.setContentDescription(component.getType().getLabel() + ": " + component.getTitle());
+        container.setOnClickListener(v -> onSelect(index));
+        container.setOnLongClickListener(v -> {
+            selectedIndex = index;
+            resizeHandlesVisible = true;
+            showResizeHandles(container, index);
+            return true;
+        });
         container.setClipChildren(false);
         container.setClipToPadding(false);
         View preview = createPreviewView(component, index == selectedIndex);
+        preview.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         preview.setTag(Integer.valueOf(index));
         installCanvasTouch(preview, index);
         installCanvasTouch(container, index);
@@ -1217,7 +1389,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                                 resizeHandlesVisible = false;
                             }
                             if (component.isFullWidth()) {
-                                component.setWidthDp(defaultFreeWidthDp(component));
+                                component.setWidthDp(resolveComponentWidthDp(component));
                                 component.setFullWidth(false);
                             }
                             component.setXdp(startXdp + pxToDp(dx));
@@ -1420,23 +1592,31 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private int inspectorDrawerWidth() {
-        return Math.min(dp(360), Math.max(dp(280), getResources().getDisplayMetrics().widthPixels - dp(28)));
+        return Math.min(dp(400), getResources().getDisplayMetrics().widthPixels - dp(16));
     }
 
     private void openInspectorDrawer() {
-        if (inspectorPopup == null || selectedIndex < 0 || selectedIndex >= components.size()) {
+        if (inspectorDialog == null || selectedIndex < 0 || selectedIndex >= components.size()) {
             return;
         }
-        inspectorPopup.setWidth(inspectorDrawerWidth());
-        if (!inspectorPopup.isShowing()) {
-            inspectorPopup.showAtLocation(binding.getRoot(), Gravity.END, 0, 0);
+        if (!inspectorDialog.isShowing()) {
+            binding.inspectorScroll.scrollTo(0, 0);
+            binding.inspectorDrawer.setFocusableInTouchMode(true);
+            binding.inspectorDrawer.requestFocus();
+            inspectorDialog.show();
+            Window window = inspectorDialog.getWindow();
+            if (window != null) {
+                window.setGravity(Gravity.END);
+                window.setLayout(inspectorDrawerWidth(), ViewGroup.LayoutParams.MATCH_PARENT);
+            }
+            ViewCompat.requestApplyInsets(binding.inspectorDrawer);
             logDebug("Inspector drawer opened index=" + selectedIndex);
         }
     }
 
     private void closeInspectorDrawer() {
-        if (inspectorPopup != null && inspectorPopup.isShowing()) {
-            inspectorPopup.dismiss();
+        if (inspectorDialog != null && inspectorDialog.isShowing()) {
+            inspectorDialog.dismiss();
             logDebug("Inspector drawer closed");
         }
     }
@@ -1685,10 +1865,11 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     }
 
     private void assignDefaultPositions(List<UiComponent> items) {
-        for (int i = 0; i < items.size(); i++) {
-            UiComponent component = items.get(i);
+        int top = 16;
+        for (UiComponent component : items) {
             component.setXdp(12);
-            component.setYdp(16 + (i * 96));
+            component.setYdp(top);
+            top += resolveComponentHeightDp(component) + 12;
         }
     }
 
@@ -1721,6 +1902,8 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 logDebug("Palette drag started accepted=" + dragInProgress);
                 return dragInProgress;
             case DragEvent.ACTION_DRAG_LOCATION:
+                dragScrollDelta = 0;
+                binding.workspaceScroll.removeCallbacks(dragAutoScroll);
                 return true;
             case DragEvent.ACTION_DROP:
                 if (payload.isPaletteDrag()) {
@@ -2735,6 +2918,22 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         if (selectedIndex < 0 || selectedIndex >= components.size()) {
             return;
         }
+        UiComponent target = getSelected();
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.delete_object_title)
+                .setMessage(getString(R.string.delete_object_message, target.getTitle()))
+                .setPositiveButton(R.string.delete_short, (dialog, which) -> {
+                    int index = components.indexOf(target);
+                    if (index >= 0) {
+                        selectedIndex = index;
+                        removeSelectedComponent();
+                    }
+                })
+                .setNegativeButton(R.string.keep_editing, null)
+                .show();
+    }
+
+    private void removeSelectedComponent() {
         UiComponent removed = components.get(selectedIndex);
         logDebug("Delete component index=" + selectedIndex + " type=" + removed.getType());
         components.remove(selectedIndex);
@@ -2744,6 +2943,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             selectedIndex = components.size() - 1;
         }
         resizeHandlesVisible = false;
+        closeInspectorDrawer();
         refreshAll();
     }
 
@@ -2754,6 +2954,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             TextView exportText = dialogText(payload);
             exportText.setTypeface(Typeface.MONOSPACE);
             exportText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            exportText.setTextIsSelectable(true);
             ScrollView scrollView = new ScrollView(this);
             scrollView.addView(exportText);
             new MaterialAlertDialogBuilder(this)
@@ -2826,6 +3027,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
                 stream.write(root.toString(2).getBytes(StandardCharsets.UTF_8));
             }
             binding.projectNameInput.setText(projectName);
+            markProjectClean();
             Toast.makeText(this, R.string.project_saved, Toast.LENGTH_SHORT).show();
             logDebug("Project saved name=" + projectName + " path=" + projectFile.getAbsolutePath()
                     + " components=" + components.size() + " bytes=" + projectFile.length());
@@ -2852,28 +3054,24 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, R.color.surface_selected)));
             button.setCornerRadius(dp(12));
             button.setGravity(Gravity.CENTER_VERTICAL);
-            button.setOnClickListener(v -> {
-                loadProjectFile(project);
-                if (v.getRootView() != null) {
-                    // The dialog closes through the button listener below.
-                }
-            });
             content.addView(button, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT));
         }
 
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
         androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.load_project_title)
-                .setView(content)
+                .setView(scroll)
                 .setNegativeButton(R.string.close_label, null)
                 .create();
         for (int i = 0; i < content.getChildCount(); i++) {
             View child = content.getChildAt(i);
             child.setOnClickListener(v -> {
                 int index = content.indexOfChild(v);
-                loadProjectFile(savedProjects[index]);
                 dialog.dismiss();
+                confirmProjectReplacement(() -> loadProjectFile(savedProjects[index]));
             });
         }
         dialog.show();
@@ -2950,14 +3148,14 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         card.setPadding(paddingHorizontal, paddingVertical, paddingHorizontal, dp(18));
 
         GradientDrawable background = new GradientDrawable();
-        background.setColor(Color.parseColor("#13231F"));
+        background.setColor(ContextCompat.getColor(this, R.color.surface_primary));
         background.setCornerRadius(dp(28));
-        background.setStroke(dp(1), Color.parseColor("#1E3A34"));
+        background.setStroke(dp(1), ContextCompat.getColor(this, R.color.stroke_soft));
         card.setBackground(background);
 
         TextView title = aboutText(getString(R.string.about_title), 30, true);
         card.addView(title);
-        addVerticalSpace(card, 56);
+        addVerticalSpace(card, 24);
         card.addView(aboutText(getString(R.string.about_developer), 19, false));
         addVerticalSpace(card, 28);
         card.addView(aboutLinkText(
@@ -2978,10 +3176,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
         MaterialButton logsButton = new MaterialButton(this);
         logsButton.setText(getString(R.string.about_logs_button));
-        logsButton.setTextColor(Color.WHITE);
+        logsButton.setTextColor(ContextCompat.getColor(this, R.color.on_mint));
         logsButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         logsButton.setAllCaps(false);
-        logsButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#2A9D8F")));
+        logsButton.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.accent_mint)));
         logsButton.setCornerRadius(dp(16));
         card.addView(logsButton, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -2990,10 +3188,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
         MaterialButton updateButton = new MaterialButton(this);
         updateButton.setText(getString(R.string.about_check_updates_button));
-        updateButton.setTextColor(Color.WHITE);
+        updateButton.setTextColor(ContextCompat.getColor(this, R.color.on_accent));
         updateButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         updateButton.setAllCaps(false);
-        updateButton.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#3FA35B")));
+        updateButton.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.accent_cobalt)));
         updateButton.setCornerRadius(dp(16));
         card.addView(updateButton, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -3002,7 +3200,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
 
         MaterialButton closeButton = new MaterialButton(this, null, com.google.android.material.R.attr.borderlessButtonStyle);
         closeButton.setText(getString(R.string.close_label).toUpperCase(Locale.US));
-        closeButton.setTextColor(Color.parseColor("#3FA35B"));
+        closeButton.setTextColor(ContextCompat.getColor(this, R.color.accent_cobalt));
         closeButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         closeButton.setAllCaps(false);
         closeButton.setBackgroundColor(Color.TRANSPARENT);
@@ -3012,8 +3210,10 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         closeParams.gravity = Gravity.END;
         card.addView(closeButton, closeParams);
 
+        ScrollView aboutScroll = new ScrollView(this);
+        aboutScroll.addView(card);
         androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
-                .setView(card)
+                .setView(aboutScroll)
                 .create();
         logsButton.setOnClickListener(v -> showLogViewerDialog());
         updateButton.setOnClickListener(v -> AppUpdateChecker.checkNow(this));
@@ -3094,7 +3294,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
     private TextView aboutText(String text, int sizeSp, boolean bold) {
         TextView textView = new TextView(this);
         textView.setText(text);
-        textView.setTextColor(Color.WHITE);
+        textView.setTextColor(ContextCompat.getColor(this, R.color.text_strong));
         textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp);
         textView.setLineSpacing(dp(3), 1.0f);
         if (bold) {
@@ -3116,7 +3316,7 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             @Override
             public void updateDrawState(TextPaint ds) {
                 super.updateDrawState(ds);
-                ds.setColor(Color.parseColor("#C76542"));
+                ds.setColor(ContextCompat.getColor(MainActivity.this, R.color.accent_cobalt));
                 ds.setUnderlineText(true);
             }
         }, start, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -3170,6 +3370,9 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             }
             JSONObject root = new JSONObject(new String(bytes, 0, read, StandardCharsets.UTF_8));
             applyProjectJson(root);
+            activePreset = "";
+            binding.presetDropdownInput.setText("", false);
+            markProjectClean();
             Toast.makeText(this, R.string.project_loaded, Toast.LENGTH_SHORT).show();
             logDebug("Project load success path=" + projectFile.getAbsolutePath()
                     + " components=" + components.size());
@@ -3316,6 +3519,16 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
             components.addAll(restored);
         }
         selectedIndex = savedInstanceState.getInt(STATE_SELECTION, components.isEmpty() ? -1 : 0);
+        projectBaseline = savedInstanceState.getString(STATE_BASELINE, "");
+        activePreset = savedInstanceState.getString(STATE_PRESET, "");
+        binding.presetDropdownInput.setText(activePreset, false);
+        Bundle groups = savedInstanceState.getBundle(STATE_PALETTE_GROUPS);
+        if (groups != null) {
+            for (String groupName : groups.keySet()) {
+                paletteGroupsExpanded.put(groupName, groups.getBoolean(groupName));
+            }
+            renderPaletteGroups();
+        }
     }
 
     @Override
@@ -3324,6 +3537,13 @@ public class MainActivity extends AppCompatActivity implements LayerAdapter.Laye
         outState.putString(STATE_PROJECT_NAME, textOf(binding.projectNameInput));
         outState.putSerializable(STATE_COMPONENTS, new ArrayList<>(components));
         outState.putInt(STATE_SELECTION, selectedIndex);
+        outState.putString(STATE_BASELINE, projectBaseline);
+        outState.putString(STATE_PRESET, activePreset);
+        Bundle groups = new Bundle();
+        for (Map.Entry<String, Boolean> entry : paletteGroupsExpanded.entrySet()) {
+            groups.putBoolean(entry.getKey(), entry.getValue());
+        }
+        outState.putBundle(STATE_PALETTE_GROUPS, groups);
     }
 
     @Override

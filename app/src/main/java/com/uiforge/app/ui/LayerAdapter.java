@@ -53,8 +53,17 @@ public class LayerAdapter extends RecyclerView.Adapter<LayerAdapter.LayerViewHol
         holder.binding.layerCard.setCardBackgroundColor(holder.itemView.getResources().getColor(
                 isSelected ? R.color.surface_selected : R.color.surface_primary,
                 holder.itemView.getContext().getTheme()));
-        holder.binding.getRoot().setOnClickListener(v -> listener.onSelect(holder.getBindingAdapterPosition()));
-        holder.binding.deleteButton.setOnClickListener(v -> listener.onDelete(holder.getBindingAdapterPosition()));
+        holder.binding.layerCard.setSelected(isSelected);
+        holder.binding.getRoot().setOnClickListener(v -> {
+            int current = holder.getBindingAdapterPosition();
+            if (current != RecyclerView.NO_POSITION) { listener.onSelect(current); }
+        });
+        holder.binding.deleteButton.setContentDescription(holder.itemView.getContext().getString(
+                R.string.delete_object_description, item.getTitle()));
+        holder.binding.deleteButton.setOnClickListener(v -> {
+            int current = holder.getBindingAdapterPosition();
+            if (current != RecyclerView.NO_POSITION) { listener.onDelete(current); }
+        });
     }
 
     @Override
